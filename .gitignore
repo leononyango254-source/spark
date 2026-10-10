@@ -1,0 +1,11 @@
+node_modules/
+**/node_modules/
+spikes/**/out/
+spikes/**/cache/
+spikes/**/broadcast/
+spikes/**/.gas-snapshot
+**/.env
+**/.env.*
+**/keys/
+*.log
+.DS_Store
