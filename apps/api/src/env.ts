@@ -1,0 +1,16 @@
+import { z } from "zod";
+
+export const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  API_PORT: z.coerce.number().int().positive().default(3000),
+  API_HOST: z.string().default("0.0.0.0"),
+  DATABASE_URL: z.string().url().optional(),
+  ARC_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
+  TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  return envSchema.parse(source);
+}

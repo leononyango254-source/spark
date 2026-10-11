@@ -1,0 +1,27 @@
+{
+  "name": "@spark/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/server.ts"
+  },
+  "dependencies": {
+    "@spark/arc": "workspace:*",
+    "@spark/db": "workspace:*",
+    "@spark/domain": "workspace:*",
+    "@spark/ledger": "workspace:*",
+    "@spark/rewards": "workspace:*",
+    "@spark/telegram": "workspace:*",
+    "@spark/wallet": "workspace:*",
+    "fastify": "^5.2.0",
+    "zod": "^4.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  }
+}

@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "worker"
+
+allowBuilds:
+  "@biomejs/biome": true
+  esbuild: true
