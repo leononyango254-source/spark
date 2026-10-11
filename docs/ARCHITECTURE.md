@@ -47,3 +47,9 @@
 - Block timestamps are non-decreasing — order by block number + log index.
 
 See `docs/spikes/` for evidence.
+
+## Telegram (Phase 2)
+
+- `apps/bot` long-polls `getUpdates` and answers `/start`, opening the Mini App (deep links with `startapp=c_<publicId>_<referralCode>`).
+- `POST /api/campaigns/:publicId/verify` checks the user's membership in the campaign channel via `getChatMember` (bot must be an admin of the target chat, PRD §15), cached in-memory for `MEMBERSHIP_CACHE_TTL_MS`.
+- `apps/telegram-mini-app` is a Vite static client; it posts raw `initData` to `/api/auth/telegram` and never trusts `initDataUnsafe`.
