@@ -16,11 +16,9 @@ export const campaigns = pgTable(
     escrowAddress: text("escrow_address"),
     onChainCampaignId: bigint("on_chain_campaign_id", { mode: "bigint" }),
     rewardMicroUsdc: bigint("reward_micro_usdc", { mode: "bigint" }).notNull(),
-    referralRewardMicroUsdc: bigint("referral_reward_micro_usdc", { mode: "bigint" })
-      .notNull()
-      .default(0n),
+    referralRewardMicroUsdc: bigint("referral_reward_micro_usdc", { mode: "bigint" }).notNull(),
     budgetMicroUsdc: bigint("budget_micro_usdc", { mode: "bigint" }).notNull(),
-    balanceMicroUsdc: bigint("balance_micro_usdc", { mode: "bigint" }).notNull().default(0n),
+    balanceMicroUsdc: bigint("balance_micro_usdc", { mode: "bigint" }).notNull(),
     targetChatId: bigint("target_chat_id", { mode: "bigint" }),
     targetChatUsername: text("target_chat_username"),
     deadline: timestamp("deadline", { withTimezone: true }),
