@@ -5,9 +5,9 @@ import type { MicroUsdc } from "@spark/domain";
  * `campaignBalance` are the authorities; campaign money columns are derived caches.
  */
 export const LEDGER_ENTRY_TYPES = [
-  "CAMPAIGN_FUNDED",
-  "REWARD_PAYOUT",
-  "REFERRAL_PAYOUT",
+  "CAMPAIGN_FUNDING",
+  "USER_REWARD",
+  "REFERRAL_REWARD",
   "CAMPAIGN_REFUND",
 ] as const;
 
@@ -16,17 +16,19 @@ export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[number];
 export interface LedgerEntry {
   readonly id: string;
   readonly campaignId: string;
+  readonly rewardId: string | null;
   readonly type: LedgerEntryType;
   readonly amountMicroUsdc: MicroUsdc;
+  readonly direction: 1 | -1;
+  readonly reference: string | null;
   readonly idempotencyKey: string;
-  readonly transactionHash: string | null;
   readonly createdAt: Date;
 }
 
 /** Direction sign for balance aggregation. */
-export const LEDGER_SIGN: Record<LedgerEntryType, 1 | -1> = {
-  CAMPAIGN_FUNDED: 1,
-  REWARD_PAYOUT: -1,
-  REFERRAL_PAYOUT: -1,
+export const LEDGER_DIRECTION: Record<LedgerEntryType, 1 | -1> = {
+  CAMPAIGN_FUNDING: 1,
+  USER_REWARD: -1,
+  REFERRAL_REWARD: -1,
   CAMPAIGN_REFUND: -1,
 };

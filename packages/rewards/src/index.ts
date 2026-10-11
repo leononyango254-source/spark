@@ -10,20 +10,33 @@ export const PARTICIPATION_STATES = [
   "WALLET_REQUIRED",
   "REWARD_PENDING",
   "REWARDED",
+  "REJECTED",
 ] as const;
 
 export type ParticipationState = (typeof PARTICIPATION_STATES)[number];
 
-export const REWARD_STATES = ["ELIGIBLE", "AUTHORIZED", "SUBMITTED", "CONFIRMED", "PAID"] as const;
+export const REWARD_STATES = [
+  "ELIGIBLE",
+  "AUTHORIZED",
+  "SUBMITTED",
+  "CONFIRMED",
+  "PAID",
+  "SUBMISSION_FAILED",
+  "RETRYING",
+  "FAILED",
+] as const;
 
 export type RewardState = (typeof REWARD_STATES)[number];
 
 export const REWARD_TRANSITIONS: Record<RewardState, readonly RewardState[]> = {
   ELIGIBLE: ["AUTHORIZED"],
-  AUTHORIZED: ["SUBMITTED"],
-  SUBMITTED: ["CONFIRMED"],
+  AUTHORIZED: ["SUBMITTED", "SUBMISSION_FAILED"],
+  SUBMITTED: ["CONFIRMED", "FAILED"],
   CONFIRMED: ["PAID"],
   PAID: [],
+  SUBMISSION_FAILED: ["RETRYING", "FAILED"],
+  RETRYING: ["SUBMITTED", "SUBMISSION_FAILED"],
+  FAILED: [],
 };
 
 export function canTransitionReward(from: RewardState, to: RewardState): boolean {

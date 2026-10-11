@@ -19,4 +19,14 @@ describe("reward state machine", () => {
     expect(isWalletMutable("ELIGIBLE")).toBe(true);
     expect(isWalletMutable("AUTHORIZED")).toBe(false);
   });
+
+  it("allows the failure recovery path", () => {
+    expect(canTransitionReward("AUTHORIZED", "SUBMISSION_FAILED")).toBe(true);
+    expect(canTransitionReward("SUBMISSION_FAILED", "RETRYING")).toBe(true);
+    expect(canTransitionReward("RETRYING", "SUBMITTED")).toBe(true);
+  });
+
+  it("rejects unknown transitions", () => {
+    expect(canTransitionReward("FAILED", "RETRYING")).toBe(false);
+  });
 });
