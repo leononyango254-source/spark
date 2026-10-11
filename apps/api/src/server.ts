@@ -1,10 +1,26 @@
+import cookie from "@fastify/cookie";
 import Fastify, { type FastifyInstance } from "fastify";
+import type { Db } from "@spark/db";
+import { registerAuthRoutes } from "./routes/auth";
+import { registerMeRoutes } from "./routes/me";
 
-/** Build the Fastify application. No business routes yet (added in later phases). */
-export function buildServer(): FastifyInstance {
+export interface ApiDeps {
+  db: Db;
+  telegramBotToken: string | undefined;
+  sessionTtlSeconds: number;
+  nodeEnv: "development" | "test" | "production";
+}
+
+export function buildServer(deps: ApiDeps): FastifyInstance {
   const app = Fastify({ logger: false });
+  app.register(cookie);
 
   app.get("/health", async () => ({ status: "ok", service: "spark-api" }));
+
+  app.register(async (instance) => {
+    registerAuthRoutes(instance, deps);
+    registerMeRoutes(instance, deps);
+  });
 
   return app;
 }

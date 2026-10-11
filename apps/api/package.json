@@ -8,6 +8,7 @@
     ".": "./src/server.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.3",
     "@spark/arc": "workspace:*",
     "@spark/db": "workspace:*",
     "@spark/domain": "workspace:*",
@@ -16,6 +17,7 @@
     "@spark/telegram": "workspace:*",
     "@spark/wallet": "workspace:*",
     "fastify": "^5.2.0",
+    "pg": "^8.23.1",
     "zod": "^4.0.0"
   },
   "scripts": {

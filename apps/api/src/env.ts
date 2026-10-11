@@ -7,6 +7,7 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
   ARC_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+  SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(2_592_000),
 });
 
 export type Env = z.infer<typeof envSchema>;
