@@ -16,7 +16,10 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @spark/db db:generate",
-    "db:migrate": "pnpm --filter @spark/db db:migrate"
+    "db:migrate": "pnpm --filter @spark/db db:migrate",
+    "dev:api": "pnpm --filter @spark/api dev",
+    "dev:bot": "pnpm --filter @spark/bot dev",
+    "dev:mini": "pnpm --filter @spark/telegram-mini-app dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
