@@ -218,6 +218,15 @@ importers:
         specifier: ^4.0.0
         version: 4.6.5
 
+  apps/bot:
+    dependencies:
+      '@spark/telegram':
+        specifier: workspace:*
+        version: link:../../packages/telegram
+      zod:
+        specifier: ^4.0.0
+        version: 4.6.5
+
   apps/telegram-mini-app: {}
 
   apps/web: {}
