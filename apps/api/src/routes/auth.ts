@@ -7,7 +7,7 @@ const bodySchema = z.object({ initData: z.string().min(1) });
 
 export function registerAuthRoutes(app: FastifyInstance, deps: ApiDeps): void {
   app.post("/api/auth/telegram", async (request, reply) => {
-    if (!deps.telegramBotToken) {
+    if (!deps.telegram) {
       return reply.code(503).send({ error: "telegram_not_configured" });
     }
     const parsed = bodySchema.safeParse(request.body);
@@ -15,7 +15,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: ApiDeps): void {
 
     const outcome = await authenticateTelegram(deps.db, {
       initData: parsed.data.initData,
-      botToken: deps.telegramBotToken,
+      botToken: deps.telegram.botToken,
       sessionTtlSeconds: deps.sessionTtlSeconds,
     });
     if (!outcome.ok) return reply.code(401).send({ error: "unauthorized", reason: outcome.reason });

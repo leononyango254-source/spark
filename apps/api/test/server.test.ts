@@ -1,12 +1,15 @@
 import type { Db } from "@spark/db";
+import { TelegramBotClient } from "@spark/telegram";
 import { afterEach, describe, expect, it } from "vitest";
+import { createMembershipCache } from "../src/cache/membershipCache";
 import { loadEnv } from "../src/env";
 import { buildServer } from "../src/server";
 
 function testDeps(): Parameters<typeof buildServer>[0] {
   return {
     db: {} as Db,
-    telegramBotToken: "123456:TEST",
+    telegram: new TelegramBotClient({ botToken: "123456:TEST" }),
+    membershipCache: createMembershipCache(300_000),
     sessionTtlSeconds: 3600,
     nodeEnv: "test",
   };

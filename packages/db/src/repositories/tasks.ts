@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../client";
-import { tasks, type TaskRow } from "../schema";
+import { type TaskRow, tasks } from "../schema";
 
 export async function findMembershipTask(db: Db, campaignId: string): Promise<TaskRow | null> {
   const [row] = await db

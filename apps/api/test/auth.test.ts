@@ -1,6 +1,7 @@
-import { signInitData } from "@spark/telegram";
+import { signInitData, TelegramBotClient } from "@spark/telegram";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Harness, startHarness } from "../../../packages/db/test/harness";
+import { createMembershipCache } from "../src/cache/membershipCache";
 import { type ApiDeps, buildServer } from "../src/server";
 
 const BOT_TOKEN = "123456:TEST_BOT_TOKEN";
@@ -11,7 +12,8 @@ beforeAll(async () => {
   h = await startHarness();
   deps = {
     db: h.db,
-    telegramBotToken: BOT_TOKEN,
+    telegram: new TelegramBotClient({ botToken: BOT_TOKEN }),
+    membershipCache: createMembershipCache(300_000),
     sessionTtlSeconds: 3600,
     nodeEnv: "test",
   };

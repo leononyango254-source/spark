@@ -1,3 +1,5 @@
+import { TelegramBotClient } from "@spark/telegram";
+import { createMembershipCache } from "./cache/membershipCache";
 import { buildDb } from "./db";
 import { loadEnv } from "./env";
 import { buildServer } from "./server";
@@ -9,7 +11,10 @@ if (!env.DATABASE_URL) {
 
 const app = buildServer({
   db: buildDb(env.DATABASE_URL),
-  telegramBotToken: env.TELEGRAM_BOT_TOKEN,
+  telegram: env.TELEGRAM_BOT_TOKEN
+    ? new TelegramBotClient({ botToken: env.TELEGRAM_BOT_TOKEN })
+    : undefined,
+  membershipCache: createMembershipCache(env.MEMBERSHIP_CACHE_TTL_MS),
   sessionTtlSeconds: env.SESSION_TTL_SECONDS,
   nodeEnv: env.NODE_ENV,
 });
