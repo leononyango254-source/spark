@@ -14,8 +14,10 @@
     "pg": "^8.13.0"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^10.18.0",
     "@types/pg": "^8.11.10",
-    "drizzle-kit": "^0.31.0"
+    "drizzle-kit": "^0.31.0",
+    "testcontainers": "^10.18.0"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
