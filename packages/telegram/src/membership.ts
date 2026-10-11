@@ -3,6 +3,7 @@ export const ACCEPTED_MEMBER_STATUSES = ["creator", "administrator", "member"] a
 export interface ChatMember {
   status: string;
   is_member?: boolean;
+  user?: { id: number };
 }
 
 /** creator / administrator / member pass; restricted passes only when is_member === true. */

@@ -22,7 +22,7 @@ export interface TelegramBotApi {
     text: string,
     opts?: { replyMarkup?: { inlineKeyboard: InlineKeyboardButton[][] } },
   ): Promise<void>;
-  getMe(): Promise<{ username: string }>;
+  getMe(): Promise<{ id: number; username: string }>;
   getUpdates(opts: { offset: number; timeout: number }): Promise<TelegramUpdate[]>;
 }
 
@@ -99,7 +99,7 @@ export class TelegramBotClient implements TelegramBotApi {
     await this.#call("sendMessage", payload);
   }
 
-  async getMe(): Promise<{ username: string }> {
+  async getMe(): Promise<{ id: number; username: string }> {
     return this.#call<{ id: number; username: string }>("getMe", {});
   }
 
