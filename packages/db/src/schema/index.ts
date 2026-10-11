@@ -3,3 +3,5 @@ export * from "./users";
 export * from "./sessions";
 export * from "./campaigns";
 export * from "./tasks";
+export * from "./participations";
+export * from "./referrals";
