@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791724554968,
+      "tag": "0000_glossy_meteorite",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791724562689,
+      "tag": "0001_ledger-append-only",
+      "breakpoints": true
+    }
+  ]
+}
