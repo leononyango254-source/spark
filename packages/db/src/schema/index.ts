@@ -5,3 +5,5 @@ export * from "./campaigns";
 export * from "./tasks";
 export * from "./participations";
 export * from "./referrals";
+export * from "./rewards";
+export * from "./transactions";
