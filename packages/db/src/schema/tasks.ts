@@ -1,6 +1,6 @@
-import { jsonb, bigint, pgTable, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { taskType } from "./enums";
+import { bigint, jsonb, pgTable, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
+import { taskType } from "./enums";
 
 export const tasks = pgTable(
   "tasks",

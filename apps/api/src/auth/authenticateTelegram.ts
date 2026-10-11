@@ -1,4 +1,4 @@
-import { createSession, upsertUserByTelegramId, type Db, type UserRow } from "@spark/db";
+import { createSession, type Db, type UserRow, upsertUserByTelegramId } from "@spark/db";
 import { validateInitData } from "@spark/telegram";
 import { generateSessionToken } from "./token";
 
@@ -8,9 +8,7 @@ export interface AuthResult {
   user: UserRow;
 }
 
-export type AuthOutcome =
-  | { ok: true; result: AuthResult }
-  | { ok: false; reason: string };
+export type AuthOutcome = { ok: true; result: AuthResult } | { ok: false; reason: string };
 
 export async function authenticateTelegram(
   db: Db,

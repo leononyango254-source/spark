@@ -1,6 +1,6 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { Db } from "../client";
-import { sessions, type SessionRow } from "../schema";
+import { type SessionRow, sessions } from "../schema";
 
 export async function createSession(
   db: Db,

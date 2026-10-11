@@ -1,7 +1,7 @@
 import { signInitData } from "@spark/telegram";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startHarness, type Harness } from "../../../packages/db/test/harness";
-import { buildServer, type ApiDeps } from "../src/server";
+import { type Harness, startHarness } from "../../../packages/db/test/harness";
+import { type ApiDeps, buildServer } from "../src/server";
 
 const BOT_TOKEN = "123456:TEST_BOT_TOKEN";
 let h: Harness;

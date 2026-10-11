@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { participationStatus } from "./enums";
 import { campaigns } from "./campaigns";
+import { participationStatus } from "./enums";
 import { tasks } from "./tasks";
 import { users } from "./users";
 

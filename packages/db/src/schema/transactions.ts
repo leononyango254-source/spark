@@ -1,6 +1,6 @@
 import { bigint, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { transactionStatus, transactionType } from "./enums";
 import { campaigns } from "./campaigns";
+import { transactionStatus, transactionType } from "./enums";
 import { rewards } from "./rewards";
 
 export const blockchainTransactions = pgTable(

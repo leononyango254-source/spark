@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startHarness, type Harness } from "./harness";
+import { type Harness, startHarness } from "./harness";
 
 let h: Harness;
 
@@ -77,11 +77,10 @@ describe("schema constraints", () => {
       [cid, uid, taskId],
     );
     await expect(
-      h.pool.query("INSERT INTO participations (campaign_id, user_id, task_id) VALUES ($1, $2, $3)", [
-        cid,
-        uid,
-        taskId,
-      ]),
+      h.pool.query(
+        "INSERT INTO participations (campaign_id, user_id, task_id) VALUES ($1, $2, $3)",
+        [cid, uid, taskId],
+      ),
     ).rejects.toSatisfy((e) => pgErrorCode(e) === "23505");
 
     await expect(

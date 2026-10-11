@@ -24,6 +24,20 @@
 - `@spark/arc` owns chain constants and the USDC/fee/emitter rules.
 - `@spark/domain` owns money (`MicroUsdc` bigint) and state transitions shared by API and worker.
 
+## Data layer (Phase 1)
+
+- Single Postgres 17 database (`packages/db`); 12 tables: campaign/participation/reward/ledger/verification/settlement state, `users` (Telegram identity), `sessions` (opaque auth), `wallets`, `campaign_events`, `creator_funding_handoffs`.
+- All money is integer micro-USDC (`bigint`), matching `@spark/domain.MicroUsdc`.
+- `ledger_entries` is **append-only**: a `reject_ledger_mutation()` trigger rejects UPDATE/DELETE, so settlement history is immutable (server audit trail; `docs/SECURITY.md`).
+- Identity fields are **server-derived**: the client sends only Telegram `initData`; the API validates the HMAC, upserts `users` by `telegram_user_id`, and issues a 256-bit random session token. Only `sha256(token)` is persisted in `sessions` (PRD §53–54).
+- Migrations are plain SQL under `packages/db/drizzle`; `pnpm db:migrate` applies them. Integration tests run against an ephemeral Testcontainers `postgres:17`.
+
+## Auth (Phase 1)
+
+- `POST /api/auth/telegram { initData }` → validates signature (30 min TTL), upsert user, create session (TTL from `SESSION_TTL_SECONDS`, cookie `spark_session` + Bearer token).
+- `GET /api/me` → resolves the token hash, returns the authenticated user.
+- Bot token is a server secret; never shipped to clients (TSA constraint from `docs/CONTRACT.md`).
+
 ## Arc-specific rules (from Phase 0)
 
 - USDC is the native gas token; ERC-20 interface is 6 decimals, native view is 18 (`×1e12`).

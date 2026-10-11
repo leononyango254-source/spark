@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../client";
-import { users, type UserRow } from "../schema";
+import { type UserRow, users } from "../schema";
 
 export interface TelegramProfile {
   telegramUserId: bigint;

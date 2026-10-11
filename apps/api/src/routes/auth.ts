@@ -31,7 +31,11 @@ export function registerAuthRoutes(app: FastifyInstance, deps: ApiDeps): void {
     return reply.send({
       token,
       expiresAt: expiresAt.toISOString(),
-      user: { id: user.id, telegramUserId: user.telegramUserId.toString(), username: user.username },
+      user: {
+        id: user.id,
+        telegramUserId: user.telegramUserId.toString(),
+        username: user.username,
+      },
     });
   });
 }

@@ -1,6 +1,6 @@
 import cookie from "@fastify/cookie";
-import Fastify, { type FastifyInstance } from "fastify";
 import type { Db } from "@spark/db";
+import Fastify, { type FastifyInstance } from "fastify";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerMeRoutes } from "./routes/me";
 

@@ -1,7 +1,16 @@
 import { sql } from "drizzle-orm";
-import { bigint, check, index, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { ledgerEntryType } from "./enums";
+import {
+  bigint,
+  check,
+  index,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
+import { ledgerEntryType } from "./enums";
 import { rewards } from "./rewards";
 
 export const ledgerEntries = pgTable(

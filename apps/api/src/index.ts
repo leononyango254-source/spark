@@ -1,5 +1,5 @@
-import { loadEnv } from "./env";
 import { buildDb } from "./db";
+import { loadEnv } from "./env";
 import { buildServer } from "./server";
 
 const env = loadEnv();

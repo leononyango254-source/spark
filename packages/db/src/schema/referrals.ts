@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { referralStatus } from "./enums";
 import { campaigns } from "./campaigns";
+import { referralStatus } from "./enums";
 import { users } from "./users";
 
 export const referrals = pgTable(

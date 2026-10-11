@@ -8,7 +8,7 @@ import {
   revokeSession,
   upsertUserByTelegramId,
 } from "../src";
-import { startHarness, type Harness } from "./harness";
+import { type Harness, startHarness } from "./harness";
 
 let h: Harness;
 beforeAll(async () => {

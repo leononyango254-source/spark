@@ -1,7 +1,17 @@
 import { sql } from "drizzle-orm";
-import { bigint, check, index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
-import { rewardStatus, rewardType } from "./enums";
+import {
+  bigint,
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
+import { rewardStatus, rewardType } from "./enums";
 import { participations } from "./participations";
 import { users } from "./users";
 

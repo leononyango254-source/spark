@@ -1,4 +1,4 @@
-import { findActiveSessionByTokenHash, findUserById, type Db, type UserRow } from "@spark/db";
+import { type Db, findActiveSessionByTokenHash, findUserById, type UserRow } from "@spark/db";
 import { hashToken } from "./token";
 
 export function extractToken(headers: {
