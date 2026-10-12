@@ -1,420 +1,166 @@
 # Phase 3: Campaign + Referral + Reward Engines Design
 
-## Overview
+## Scope
 
-Phase 3 implements the core business logic engines per PRD §76-§109 (Campaigns, User participation, Referral) and §21-§25 (Reward model, state machine, idempotency, ledger).
+Implements PRD §74 (Phase 3 — Campaign Engine): campaign lifecycle, task, participation, referral, eligibility, reward records. Settlement is **mocked** — the full reward state machine advances through `PAID` against a `SettlementPort` mock, with **no real Arc chain calls and no contract changes**. Real contract work is PRD §75 (Phase 4); real Arc settlement is PRD §76 (Phase 5).
 
-Architecture: separate engine packages with shared types in `@spark/domain`, matching the `@spark/telegram` pattern.
-
----
+Architecture: separate engine packages with shared pure domain logic, matching the `@spark/telegram` pattern.
 
 ## Package Structure
 
 ```
-@spark/domain          # Campaign, Referral, Participation, Reward types + state machines
-@spark/campaign        # CampaignEngine: create, configure, fund, activate, pause/resume/close, stats
-@spark/referral        # ReferralEngine: generate deep link, attribute at auth, freeze, qualify
-@spark/reward          # RewardEngine: eligibility → reserve budget → authorize (nonce) → worker submits payout
-@spark/db              # Repositories + migrations for campaigns, referrals, participations, rewards, ledger
+@spark/domain     # money (exists), publicId (exists), referralCode (exists) — no change beyond exports
+@spark/rewards    # reward + participation state machines (EXISTS — reuse canTransitionReward)
+@spark/ledger     # ledger entry types + directions (EXISTS — reuse)
+@spark/campaign   # CampaignEngine: create, configure, fund, activate, pause/resume/close, stats
+@spark/referral   # ReferralEngine: link, attribute (first-wins), freeze, qualify; referral state machine
+@spark/reward     # RewardEngine + SettlementPort + MockSettlement
+@spark/db         # NEW repositories + one migration (see below)
 ```
 
----
+## Existing Infrastructure (do NOT recreate)
 
-## @spark/domain — Shared Types
+- `packages/db/src/schema/{campaigns,tasks,referrals,participations,rewards,ledger,campaignEvents,fundingHandoffs,transactions,wallets}.ts` and `enums.ts` all exist.
+- `packages/db/src/repositories/{campaigns,tasks,users,sessions}.ts` exist.
+- `packages/rewards/src/index.ts` has `REWARD_STATES`, `PARTICIPATION_STATES`, `canTransitionReward`, `assertRewardTransition`.
+- `packages/ledger/src/index.ts` has `LEDGER_ENTRY_TYPES`, `LEDGER_DIRECTION`.
+- `packages/wallet/src/index.ts` has `WalletProvider` port (Phase 6).
+- `contracts/src/CampaignEscrow.sol` is a Phase-0 spike skeleton — **not touched in Phase 3**.
 
-### Campaign
-```ts
-export enum CampaignStatus {
-  DRAFT = "DRAFT",
-  FUNDING = "FUNDING",
-  ACTIVE = "ACTIVE",
-  PAUSED = "PAUSED",
-  EXHAUSTED = "EXHAUSTED",
-  CLOSED = "CLOSED",
-  CANCELLED = "CANCELLED",
-}
+## Schema Migration Required (packages/db)
 
-export interface CampaignRow {
-  id: string;
-  publicId: string;
-  creatorId: string;
-  name: string;
-  description: string | null;
-  targetChatId: bigint | null;
-  targetChatUsername: string | null;
-  targetChatTitle: string | null;
-  userRewardMicroUsdc: bigint;
-  referralRewardMicroUsdc: bigint;
-  budgetMicroUsdc: bigint;
-  fundedMicroUsdc: bigint;
-  paidMicroUsdc: bigint;
-  status: CampaignStatus;
-  maxParticipants: number | null;
-  participantCount: number;
-  startsAt: Date | null;
-  endsAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+1. **campaigns**: add `maxParticipants integer NULL`, `participantCount integer NOT NULL DEFAULT 0`. Add check `participantCount >= 0` and (`maxParticipants IS NULL OR participantCount <= maxParticipants`).
+2. **referral_status** enum: replace `('PENDING','REWARDED','REJECTED')` with `('ATTRIBUTED','QUALIFIED','REWARD_PENDING','PAID','REJECTED')`.
+3. **referrals**: add `qualified_at timestamptz NULL`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+
+Migration generated with `pnpm --filter @spark/db db:generate` (drizzle-kit) so it stays consistent with `schema/`.
+
+## State Machines
+
+### Campaign (campaignStatus enum: DRAFT/FUNDING/FUNDED/ACTIVE/PAUSED/CLOSED/FUNDING_FAILED)
+```
+DRAFT → FUNDING (fund initiated)
+FUNDING → FUNDED (funded balance >= required minimum)   | FUNDING_FAILED
+FUNDED → ACTIVE (activate)
+ACTIVE → PAUSED (pause) | CLOSED (close) | FUNDING_FAILED (insufficient balance)
+PAUSED → ACTIVE (resume) | CLOSED (close)
+```
+`requiredMinimum = maxParticipants !== null ? rewardMicroUsdc * maxParticipants + referralRewardMicroUsdc * maxParticipants : budgetMicroUsdc`.
+
+### Referral (referral_status enum)
+```
+ATTRIBUTED → QUALIFIED (referred user verified)
+QUALIFIED → REWARD_PENDING (referral reward authorized)
+REWARD_PENDING → PAID (referral reward settled)
+any → REJECTED (self-referral detected / ineligible)
 ```
 
-### Task (MVP: TELEGRAM_CHANNEL_MEMBERSHIP)
-```ts
-export enum TaskType {
-  TELEGRAM_CHANNEL_MEMBERSHIP = "TELEGRAM_CHANNEL_MEMBERSHIP",
-}
-
-export interface TaskRow {
-  id: string;
-  campaignId: string;
-  type: TaskType;
-  config: Record<string, unknown>; // { chat_id: string, chat_username?: string }
-  rewardMicroUsdc: bigint;
-  createdAt: Date;
-}
+### Reward (reuse @spark/rewards REWARD_TRANSITIONS)
+```
+ELIGIBLE → AUTHORIZED → SUBMITTED → CONFIRMED → PAID
+                              ↘ SUBMISSION_FAILED → RETRYING → SUBMITTED
+                        SUBMITTED → FAILED
 ```
 
-### Referral
-```ts
-export enum ReferralStatus {
-  ATTRIBUTED = "ATTRIBUTED",      // created at auth, provisional
-  QUALIFIED = "QUALIFIED",        // verified, ready for reward
-  REWARD_PENDING = "REWARD_PENDING",
-  PAID = "PAID",
-  REJECTED = "REJECTED",
-}
-
-export interface ReferralRow {
-  id: string;
-  campaignId: string;
-  referrerUserId: string;
-  referredUserId: string;
-  referralCode: string;
-  status: ReferralStatus;
-  createdAt: Date;
-  qualifiedAt: Date | null;
-}
+### Participation (participationStatus enum: STARTED/PENDING_VERIFICATION/VERIFIED/WALLET_REQUIRED/REWARD_PENDING/REWARDED/REJECTED)
 ```
-
-### Participation
-```ts
-export enum ParticipationStatus {
-  STARTED = "STARTED",
-  PENDING_VERIFICATION = "PENDING_VERIFICATION",
-  VERIFIED = "VERIFIED",
-  REWARD_PENDING = "REWARD_PENDING",
-  REWARDED = "REWARDED",
-  REJECTED = "REJECTED",
-}
-
-export interface ParticipationRow {
-  id: string;
-  campaignId: string;
-  userId: string;
-  taskId: string;
-  referralCodeUsed: string | null;
-  referrerUserId: string | null;
-  status: ParticipationStatus;
-  verifiedAt: Date | null;
-  rewardId: string | null;
-  createdAt: Date;
-}
+STARTED → PENDING_VERIFICATION (task started)
+PENDING_VERIFICATION → VERIFIED (verify ok) | REJECTED
+VERIFIED → WALLET_REQUIRED (no wallet) | REWARD_PENDING (rewards authorized)
+REWARD_PENDING → REWARDED (all rewards PAID)
 ```
-
-### Reward
-```ts
-export enum RewardType {
-  USER_COMPLETION = "USER_COMPLETION",
-  REFERRAL = "REFERRAL",
-}
-
-export enum RewardStatus {
-  ELIGIBLE = "ELIGIBLE",
-  AUTHORIZED = "AUTHORIZED",
-  SUBMITTED = "SUBMITTED",
-  CONFIRMED = "CONFIRMED",
-  PAID = "PAID",
-  SUBMISSION_FAILED = "SUBMISSION_FAILED",
-  RETRYING = "RETRYING",
-  FAILED = "FAILED",
-}
-
-export interface RewardRow {
-  id: string;
-  campaignId: string;
-  participationId: string;
-  rewardType: RewardType;
-  recipientUserId: string;
-  recipientWallet: string;
-  amountMicroUsdc: bigint;
-  authorizationNonce: bigint;
-  authorizationExpiresAt: Date;
-  status: RewardStatus;
-  chainId: number;
-  transactionHash: string | null;
-  createdAt: Date;
-  submittedAt: Date | null;
-  confirmedAt: Date | null;
-  paidAt: Date | null;
-}
-```
-
-### Ledger
-```ts
-export enum LedgerEntryType {
-  CAMPAIGN_FUNDING = "CAMPAIGN_FUNDING",
-  USER_REWARD = "USER_REWARD",
-  REFERRAL_REWARD = "REFERRAL_REWARD",
-  CAMPAIGN_REFUND = "CAMPAIGN_REFUND",
-}
-
-export interface LedgerEntryRow {
-  id: string;
-  campaignId: string;
-  rewardId: string | null;
-  entryType: LedgerEntryType;
-  amountMicroUsdc: bigint;
-  createdAt: Date;
-}
-```
-
----
 
 ## @spark/campaign — CampaignEngine
 
-### Public Interface
 ```ts
 export interface CampaignEngine {
-  // Create campaign in DRAFT
   createCampaign(input: CreateCampaignInput): Promise<CampaignRow>;
-
-  // Configure target chat (id, username, title)
-  configureChat(campaignId: string, chat: ChatConfig): Promise<CampaignRow>;
-
-  // Configure rewards
-  setRewards(campaignId: string, rewards: RewardsConfig): Promise<CampaignRow>;
-
-  // Set budget
-  setBudget(campaignId: string, budgetMicroUsdc: bigint, maxParticipants: number | null): Promise<CampaignRow>;
-
-  // Fund campaign: operator deposits USDC to CampaignEscrow
-  fundCampaign(campaignId: string, amountMicroUsdc: bigint): Promise<CampaignRow>;
-
-  // Activate: requires funded_balance >= required minimum
+  updateConfig(campaignId: string, config: CampaignConfigInput): Promise<CampaignRow>;
+  fundCampaign(campaignId: string, amountMicroUsdc: bigint): Promise<CampaignRow>; // sets FUNDING→FUNDED (mock)
   activateCampaign(campaignId: string): Promise<CampaignRow>;
-
-  // Pause/resume
   pauseCampaign(campaignId: string): Promise<CampaignRow>;
   resumeCampaign(campaignId: string): Promise<CampaignRow>;
-
-  // Close/cancel
   closeCampaign(campaignId: string): Promise<CampaignRow>;
-  cancelCampaign(campaignId: string): Promise<CampaignRow>;
-
-  // Stats
   getCampaignStats(campaignId: string): Promise<CampaignStats>;
 }
 ```
-
-### Status Transitions
-```
-DRAFT → fundCampaign (→ FUNDING) → activateCampaign (funded >= min) → ACTIVE
-ACTIVE → pauseCampaign → PAUSED
-PAUSED → resumeCampaign → ACTIVE
-ACTIVE → closeCampaign → CLOSED (or EXHAUSTED if budget spent)
-ACTIVE → cancelCampaign → CANCELLED
-```
-
-### Funding
-- Separate `fundCampaign` step: operator calls `CampaignEscrow.deposit` with creator's signed permit + transfer
-- `fundedMicroUsdc` tracked on-chain (via CampaignEscrow events) and mirrored in DB
-- Activation requires `fundedMicroUsdc >= requiredMinimum` (configurable, default = userReward * estimated participants + buffer)
-
----
+- `createCampaign`: DRAFT, generates `publicId` via `generatePublicId`, creator must exist, validates reward/budget/chat config.
+- `updateConfig`: only while DRAFT; sets rewards, budget, maxParticipants, target chat.
+- `fundCampaign`: mocked — sets `status FUNDED`, `balanceMicroUsdc = amount` (assert amount >= required minimum). Real escrow deposit is Phase 5.
+- `activateCampaign`: requires status FUNDED and balance >= required minimum → ACTIVE, sets `activatedAt`.
+- `closeCampaign`: ACTIVE/PAUSED → CLOSED, sets `closedAt`.
 
 ## @spark/referral — ReferralEngine
 
-### Public Interface
 ```ts
 export interface ReferralEngine {
-  // Generate deep link for campaign
-  generateReferralLink(campaignPublicId: string, referrerTelegramUserId: bigint): Promise<ReferralLink>;
-
-  // Called at /api/auth/telegram when initData includes referralCode
-  attributeReferral(input: AttributionInput): Promise<ReferralRow | null>;
-
-  // Freeze attribution when user first participates
+  buildLink(campaignPublicId: string, botUsername: string, appName: string): ReferralLink;
+  attribute(input: AttributeInput): Promise<ReferralRow | null>; // first-wins, idempotent, no self-ref
   freezeAttribution(campaignId: string, referredUserId: string): Promise<void>;
-
-  // Qualify referral after referred user verification
-  qualifyReferral(campaignId: string, referredUserId: string): Promise<ReferralRow>;
-
-  // Get referral stats
-  getReferralStats(campaignId: string): Promise<ReferralStats>;
-}
-
-export interface ReferralLink {
-  deepLink: string;        // https://t.me/bot/app?startapp=c_<publicId>_<referralCode>
-  startapp: string;        // c_<publicId>_<referralCode>
-  referralCode: string;
+  qualify(campaignId: string, referredUserId: string): Promise<ReferralRow | null>;
+  markRewardPending(referralId: string): Promise<void>;
+  markPaid(referralId: string): Promise<void>;
 }
 ```
+Rules (PRD §19–§20):
+- Attribution happens at `/api/auth/telegram` when the request body includes a `referralCode`, resolved server-side to (campaign, referrer). Client-submitted referrer id is never trusted.
+- Unique `(campaignId, referredUserId)`; first valid attribution wins (no overwrite); self-referral rejected; repeat auth is idempotent.
+- Referral rows are `ATTRIBUTED` only — no payable reward until the referred user is verified.
+- Freeze: once the referred user has a Participation row, attribution cannot change.
+- Qualify: after successful verification, `ATTRIBUTED → QUALIFIED`.
 
-### Attribution Rules (per PRD §19-§20)
-1. **At auth**: when user opens referral link, Mini App parses `startapp=c_<publicId>_<referralCode>` and sends `referralCode` with `initData` to `/api/auth/telegram`
-2. **Backend**: resolves referralCode → campaign + referrer; creates Referral row with status `ATTRIBUTED`
-3. **Constraints**:
-   - Unique: `(campaignId, referredUserId)` — one referrer per user per campaign
-   - Self-referral prohibited: `referrerUserId !== referredUserId`
-   - First attribution wins: subsequent links don't overwrite
-   - Idempotent: repeat auth with same code = no-op
-4. **Freeze**: when user first participates (creates Participation row), attribution is frozen
-5. **Qualify**: after user verification (`POST /verify` succeeds), referral transitions `ATTRIBUTED` → `QUALIFIED`
+## @spark/reward — RewardEngine + SettlementPort
 
----
-
-## @spark/reward — RewardEngine
-
-### Public Interface
 ```ts
+export interface SettlementPort {
+  submitPayout(req: PayoutRequest): Promise<{ txHash: string }>;
+  getPayoutStatus(txHash: string): Promise<"pending" | "confirmed" | "failed">;
+}
+
 export interface RewardEngine {
-  // Called after successful verification
-  checkAndAuthorizeRewards(campaignId: string, participationId: string): Promise<RewardRow[]>;
-
-  // Settlement worker calls this
-  getAuthorizedRewards(limit: number): Promise<RewardRow[]>;
-
-  // Reconciliation
+  authorizeForParticipation(campaignId: string, participationId: string): Promise<RewardRow[]>;
+  listSettleable(limit: number): Promise<RewardRow[]>;
   markSubmitted(rewardId: string, txHash: string): Promise<void>;
   markConfirmed(rewardId: string): Promise<void>;
   markPaid(rewardId: string): Promise<void>;
-  markFailed(rewardId: string, reason: string): Promise<void>;
+  markSubmissionFailed(rewardId: string, reason: string): Promise<void>;
 }
 ```
+- `authorizeForParticipation`: only if campaign ACTIVE, participation VERIFIED; creates USER_COMPLETION reward (amount = campaign.rewardMicroUsdc) and, if a QUALIFIED referral exists, a REFERRAL reward (amount = campaign.referralRewardMicroUsdc). Both get unique `authorizationNonce` and `authorizationExpiresAt`. `ELIGIBLE → AUTHORIZED` in one step.
+- **Atomic budget reservation**: reserving budget is a single conditional UPDATE on campaigns (`balanceMicroUsdc -= amount` where balance >= amount), done in a transaction; failure aborts that reward with no partial rows.
+- Unique `(campaignId, participationId, rewardType)` guarantees one reward per type (idempotent re-verify).
+- `MockSettlement`: `submitPayout` returns a fake hash immediately and `getPayoutStatus` returns `confirmed`; used by the settlement worker in Phase 3.
 
-### State Machine (per PRD §22)
-```
-ELIGIBLE → authorize → AUTHORIZED (nonce assigned, budget reserved)
-AUTHORIZED → worker submits → SUBMITTED (txHash persisted)
-SUBMITTED → on-chain confirm → CONFIRMED
-CONFIRMED → PAID
+## Settlement Worker (worker/src/settlement)
 
-Failure paths:
-AUTHORIZED → SUBMISSION_FAILED → RETRYING → SUBMITTED
-SUBMITTED → FAILED
-```
-
-### Authorization (per PRD §23-§24)
-- **Atomic budget reservation**: when creating reward row, decrement `campaign.paidMicroUsdc` (reserved) and increment `campaign.paidMicroUsdc` on `PAID`
-- **Nonce**: unique `authorizationNonce` per reward (bigint, monotonic per campaign)
-- **Idempotency**: unique constraint on `(campaignId, participationId, rewardType)` prevents duplicate rewards
-- **Expiry**: `authorizationExpiresAt` (e.g., 7 days) — worker skips expired authorizations
-
----
-
-## Settlement Worker (@spark/reward or separate @spark/worker)
-
-### Flow
-1. Poll `RewardEngine.getAuthorizedRewards(limit)` for `AUTHORIZED` rewards
-2. For each reward:
-   - Call `CampaignEscrow.payReward(campaignId, rewardId, nonce, recipient, amount, deadline)`
-   - Contract checks: operator permission, campaign status, payout limits, available balance, nonce replay protection
-   - On success: persist `transactionHash`, mark `SUBMITTED`
-3. Reconciliation loop:
-   - Watch `RewardPaid` events from CampaignEscrow
-   - Mark reward `CONFIRMED` → `PAID`
-   - Create LedgerEntry (USER_REWARD / REFERRAL_REWARD)
-   - Handle retries: inspect contract state before resubmitting, nonce prevents double-pay
-
-### Contract Interface (CampaignEscrow)
-```solidity
-function payReward(
-  uint256 campaignId,
-  uint256 rewardId,
-  uint256 nonce,
-  address recipient,
-  uint256 amount,
-  uint256 deadline
-) external onlyOperator returns (bool);
-```
-
----
-
-## Database Migrations (packages/db)
-
-### Tables
-- `campaigns` (extends existing with new status enum values)
-- `tasks` (already exists, TELEGRAM_CHANNEL_MEMBERSHIP type)
-- `referrals` (new)
-- `participations` (new)
-- `rewards` (new)
-- `ledger_entries` (new)
-
-### Constraints
-```sql
--- Referrals
-UNIQUE(campaign_id, referred_user_id)
-CHECK (referrer_user_id != referred_user_id)
-
--- Rewards
-UNIQUE(campaign_id, participation_id, reward_type)
-
--- Budget
-CHECK (paid_micro_usdc <= budget_micro_usdc)
-```
-
----
+Phase 3 wires the worker against `MockSettlement`:
+1. `listSettleable` → for each AUTHORIZED (not expired) reward: `markSubmitted(nonce-derived txHash)`.
+2. `getPayoutStatus` → on `confirmed`: `markConfirmed` then append ledger entry (`USER_REWARD`/`REFERRAL_REWARD`, direction −1) idempotent via `idempotencyKey = reward:<rewardId>`, then `markPaid`. On `failed`: `markSubmissionFailed`.
+3. Never equate SUBMITTED with PAID. Crash-safe: authorization is persisted before submission; already-submitted rewards are recognised by txHash.
 
 ## API Endpoints (apps/api)
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/api/campaigns` | Create campaign (DRAFT) |
-| PATCH | `/api/campaigns/:publicId` | Configure chat, rewards, budget |
-| POST | `/api/campaigns/:publicId/fund` | Fund campaign |
-| POST | `/api/campaigns/:publicId/activate` | Activate campaign |
+| GET | `/api/campaigns/:publicId` | Fetch campaign + status |
+| PATCH | `/api/campaigns/:publicId` | Update config (DRAFT only) |
+| POST | `/api/campaigns/:publicId/fund` | Mock funding → FUNDED |
+| POST | `/api/campaigns/:publicId/activate` | Activate → ACTIVE |
 | POST | `/api/campaigns/:publicId/pause` | Pause |
 | POST | `/api/campaigns/:publicId/resume` | Resume |
 | POST | `/api/campaigns/:publicId/close` | Close |
-| GET | `/api/campaigns/:publicId/stats` | Campaign statistics |
-| POST | `/api/campaigns/:publicId/verify` | Verify participation (existing, updated to create rewards) |
+| GET | `/api/campaigns/:publicId/stats` | Stats |
+| POST | `/api/campaigns/:publicId/verify` | Verify → record participation → authorize rewards (extend existing) |
+| POST | `/api/auth/telegram` | Extend body `{ initData, referralCode? }` → attribute referral |
 
----
+## Mini App + Bot
 
-## Mini App (apps/telegram-mini-app)
+- Mini App: on launch, parse `startapp` (`parseStartParam`) and send `referralCode` alongside `initData` in `authenticate`; show campaign status, Verify button, and reward state.
+- Bot: existing `/start` deep-link handling stays; add a referral-link share helper using `ReferralEngine.buildLink`.
 
-- Parses `startapp` referralCode at launch
-- Sends `referralCode` with `initData` to `/api/auth/telegram`
-- Displays campaign UI, Verify button, referral link sharing
-- Shows reward status (eligible, pending, paid)
+## Verification
 
----
-
-## Bot (apps/bot)
-
-- Generates referral deep links via `ReferralEngine.generateReferralLink`
-- Sends notifications on reward payouts
-- Campaign admin commands (fund, activate, pause, close)
-
----
-
-## Security Considerations
-
-1. **Operator wallet only** submits payouts — `CampaignEscrow` restricts to operator role
-2. **Budget reserved atomically** at authorization — prevents overspend
-3. **Nonce replay protection** on-chain — duplicate submissions rejected
-4. **Referral attribution frozen** at first participation — prevents switching
-5. **Self-referral blocked** at DB + application layer
-6. **Verification only via server session** — never trust client-sent identity
-
----
-
-## Implementation Order
-
-1. `@spark/domain` types + enums
-2. `@spark/db` repositories + migrations
-3. `@spark/campaign` engine + API endpoints
-4. `@spark/referral` engine + auth integration
-5. `@spark/reward` engine + settlement worker
-6. Mini App + Bot integration
-7. Full verification + docs
+- Unit + integration tests per package (Vitest, testcontainers for DB/api).
+- End-to-end Phase 3 demo (integration test): create campaign → fund → activate → user auth with referral → verify membership (stub) → participation VERIFIED → rewards AUTHORIZED (user + referral) → mock settlement worker → rewards PAID, referral PAID, ledger entries appended.
+- Keep forge suite green (3/3); no contract changes.
