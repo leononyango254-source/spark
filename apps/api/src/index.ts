@@ -3,20 +3,28 @@ import { createMembershipCache } from "./cache/membershipCache";
 import { buildDb } from "./db";
 import { loadEnv } from "./env";
 import { buildServer } from "./server";
+import { createCampaignEngine } from "@spark/campaign";
+import { createReferralEngine } from "@spark/referral";
+import { createRewardEngine } from "@spark/reward";
 
 const env = loadEnv();
 if (!env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required to start the API");
 }
 
+const db = buildDb(env.DATABASE_URL);
+
 const app = buildServer({
-  db: buildDb(env.DATABASE_URL),
+  db,
   telegram: env.TELEGRAM_BOT_TOKEN
     ? new TelegramBotClient({ botToken: env.TELEGRAM_BOT_TOKEN })
     : undefined,
   membershipCache: createMembershipCache(env.MEMBERSHIP_CACHE_TTL_MS),
   sessionTtlSeconds: env.SESSION_TTL_SECONDS,
   nodeEnv: env.NODE_ENV,
+  campaignEngine: createCampaignEngine({ db }),
+  referralEngine: createReferralEngine({ db }),
+  rewardEngine: createRewardEngine({ db }),
 });
 
 app
