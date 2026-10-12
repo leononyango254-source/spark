@@ -1,33 +1,62 @@
-import { and, eq } from "drizzle-orm";
-import { type Db } from "@spark/db";
-import { referralCodes, users, type ReferralRow } from "@spark/db";
-import { upsertReferralAttribution, findReferral, updateReferralStatus } from "@spark/db";
+import {
+  type Db,
+  findReferral,
+  type ReferralRow,
+  referralCodes,
+  updateReferralStatus,
+  upsertReferralAttribution,
+  users,
+} from "@spark/db";
 import { buildCampaignDeepLink } from "@spark/telegram";
+import { and, eq } from "drizzle-orm";
 import { ReferralError } from "./state";
 
 export interface ReferralEngine {
-  linkForReferrer(input: { campaignId: string; referrerUserId: string; publicId: string; referralCode: string }): string;
-  attribute(input: { campaignId: string; referrerUserId: string; referredUserId: string }): Promise<ReferralRow | null>;
+  linkForReferrer(input: {
+    campaignId: string;
+    referrerUserId: string;
+    publicId: string;
+    referralCode: string;
+  }): string;
+  attribute(input: {
+    campaignId: string;
+    referrerUserId: string;
+    referredUserId: string;
+    referralCode: string;
+  }): Promise<ReferralRow | null>;
   qualify(campaignId: string, referredUserId: string): Promise<ReferralRow>;
-  getOrCreateReferralCode(db: Db, input: { campaignId: string; referrerUserId: string; generate: () => string }): Promise<string>;
+  getOrCreateReferralCode(
+    db: Db,
+    input: { campaignId: string; referrerUserId: string; generate: () => string },
+  ): Promise<string>;
   findReferrerByCode(db: Db, campaignId: string, code: string): Promise<{ id: string } | null>;
 }
 
 export function createReferralEngine(deps: { db: Db }): ReferralEngine {
   const { db } = deps;
 
-  function linkForReferrer(input: { campaignId: string; referrerUserId: string; publicId: string; referralCode: string }): string {
+  function linkForReferrer(input: {
+    campaignId: string;
+    referrerUserId: string;
+    publicId: string;
+    referralCode: string;
+  }): string {
     const startapp = `c_${input.publicId}_${input.referralCode}`;
     return buildCampaignDeepLink("sparkbot", "app", startapp);
   }
 
-  async function attribute(input: { campaignId: string; referrerUserId: string; referredUserId: string }): Promise<ReferralRow | null> {
+  async function attribute(input: {
+    campaignId: string;
+    referrerUserId: string;
+    referredUserId: string;
+    referralCode: string;
+  }): Promise<ReferralRow | null> {
     if (input.referrerUserId === input.referredUserId) return null;
     return upsertReferralAttribution(db, {
       campaignId: input.campaignId,
       referrerUserId: input.referrerUserId,
       referredUserId: input.referredUserId,
-      referralCode: input.referrerUserId,
+      referralCode: input.referralCode,
     });
   }
 
@@ -39,7 +68,10 @@ export function createReferralEngine(deps: { db: Db }): ReferralEngine {
     return updateReferralStatus(db, referral.id, "QUALIFIED", { qualifiedAt: new Date() });
   }
 
-  async function getOrCreateReferralCode(db: Db, input: { campaignId: string; referrerUserId: string; generate: () => string }): Promise<string> {
+  async function getOrCreateReferralCode(
+    db: Db,
+    input: { campaignId: string; referrerUserId: string; generate: () => string },
+  ): Promise<string> {
     const { campaignId, referrerUserId, generate } = input;
 
     const [existing] = await db
@@ -85,17 +117,16 @@ export function createReferralEngine(deps: { db: Db }): ReferralEngine {
     );
   }
 
-  async function findReferrerByCode(db: Db, campaignId: string, code: string): Promise<{ id: string } | null> {
+  async function findReferrerByCode(
+    db: Db,
+    campaignId: string,
+    code: string,
+  ): Promise<{ id: string } | null> {
     const [row] = await db
       .select({ id: users.id })
       .from(referralCodes)
       .innerJoin(users, eq(users.id, referralCodes.referrerUserId))
-      .where(
-        and(
-          eq(referralCodes.campaignId, campaignId),
-          eq(referralCodes.code, code),
-        ),
-      )
+      .where(and(eq(referralCodes.campaignId, campaignId), eq(referralCodes.code, code)))
       .limit(1);
     return row ?? null;
   }

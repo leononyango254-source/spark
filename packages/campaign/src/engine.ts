@@ -1,15 +1,15 @@
 import {
   type CampaignRow,
-  createCampaign as insertCampaign,
   createMembershipTask,
   type Db,
   findCampaignById,
+  createCampaign as insertCampaign,
   setCampaignFunded,
   updateCampaignConfig,
   updateCampaignStatus,
 } from "@spark/db";
 import { generatePublicId } from "@spark/domain";
-import { assertCampaignTransition, type CampaignState, CampaignError } from "./state";
+import { assertCampaignTransition, CampaignError, type CampaignState } from "./state";
 
 export interface CreateCampaignInput {
   creatorId: string;
@@ -125,7 +125,7 @@ export function createCampaignEngine(deps: { db: Db }): CampaignEngine {
 
     async fundCampaign(campaignId, amountMicroUsdc) {
       const campaign = await load(campaignId);
-      assertCampaignTransition(campaign.status as CampaignState, "FUNDED");
+      assertCampaignTransition(campaign.status as CampaignState, "FUNDING");
       if (amountMicroUsdc < requiredMinimum(campaign)) {
         throw new CampaignError("insufficient funding");
       }

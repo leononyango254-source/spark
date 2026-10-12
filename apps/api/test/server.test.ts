@@ -1,4 +1,7 @@
+import { createCampaignEngine } from "@spark/campaign";
 import type { Db } from "@spark/db";
+import { createReferralEngine } from "@spark/referral";
+import { createRewardEngine } from "@spark/reward";
 import { TelegramBotClient } from "@spark/telegram";
 import { afterEach, describe, expect, it } from "vitest";
 import { createMembershipCache } from "../src/cache/membershipCache";
@@ -12,6 +15,9 @@ function testDeps(): Parameters<typeof buildServer>[0] {
     membershipCache: createMembershipCache(300_000),
     sessionTtlSeconds: 3600,
     nodeEnv: "test",
+    referralEngine: createReferralEngine({ db: {} as Db }),
+    rewardEngine: createRewardEngine({ db: {} as Db }),
+    campaignEngine: createCampaignEngine({ db: {} as Db }),
   };
 }
 

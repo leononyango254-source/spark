@@ -1,5 +1,9 @@
+import { createCampaignEngine } from "@spark/campaign";
 import type { CampaignRow, UserRow } from "@spark/db";
-import { signInitData, TelegramBotClient } from "@spark/telegram";
+import { createCampaign, upsertUserByTelegramId } from "@spark/db";
+import { createReferralEngine } from "@spark/referral";
+import { createRewardEngine } from "@spark/reward";
+import { signInitData } from "@spark/telegram";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Harness, startHarness } from "../../../packages/db/test/harness";
 import { createMembershipCache } from "../src/cache/membershipCache";
@@ -13,16 +17,6 @@ let user: UserRow;
 
 beforeAll(async () => {
   h = await startHarness();
-  const telegram = new TelegramBotClient({ botToken: BOT_TOKEN });
-  deps = {
-    db: h.db,
-    telegram,
-    membershipCache: createMembershipCache(300_000),
-    sessionTtlSeconds: 3600,
-    nodeEnv: "test",
-  };
-
-  const { createCampaign, upsertUserByTelegramId } = await import("@spark/db");
 
   user = await upsertUserByTelegramId(h.db, {
     telegramUserId: 4242n,
@@ -48,6 +42,43 @@ beforeAll(async () => {
      values ($1, 'TELEGRAM_CHANNEL_MEMBERSHIP', $2, $3)`,
     [campaign.id, 1_000_000n, JSON.stringify({ chat_id: "-1001234567890" })],
   );
+
+  const referralEngine = createReferralEngine({ db: h.db });
+  const rewardEngine = createRewardEngine({ db: h.db });
+
+  // Create a referral code for the user/campaign
+  await referralEngine.getOrCreateReferralCode(h.db, {
+    campaignId: campaign.id,
+    referrerUserId: user.id,
+    generate: () => "a1b2c3d4",
+  });
+
+  deps = {
+    db: h.db,
+    telegram: {
+      botToken: BOT_TOKEN,
+      getChatMember: async (_chatId: bigint | string, telegramUserId: bigint) => ({
+        status: "member",
+        user: {
+          id: Number(telegramUserId),
+          is_bot: false,
+          first_name: "Alice",
+          last_name: null,
+          username: "alice",
+        },
+      }),
+      getChatAdministrators: async () => [],
+      sendMessage: async () => {},
+      getMe: async () => ({ id: 1, username: "test_bot" }),
+      getUpdates: async () => [],
+    } as any,
+    membershipCache: createMembershipCache(300_000),
+    sessionTtlSeconds: 3600,
+    nodeEnv: "test",
+    campaignEngine: createCampaignEngine({ db: h.db }),
+    referralEngine,
+    rewardEngine,
+  };
 }, 120_000);
 
 afterAll(async () => {
@@ -80,6 +111,32 @@ async function login(app: ReturnType<typeof buildServer>): Promise<string> {
 }
 
 describe("verify route", () => {
+  it("returns rewardsAuthorized >= 1 and creates participation", async () => {
+    const app = buildServer(deps);
+    const token = await login(app);
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/campaigns/${campaign.publicId}/verify`,
+      headers: authHeaders(token),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      verified: boolean;
+      memberStatus: string;
+      campaignId: string;
+      cached: boolean;
+      rewardsAuthorized: number;
+    };
+    expect(body.rewardsAuthorized).toBeGreaterThanOrEqual(1);
+    const result = await h.pool.query(
+      `select * from participations where campaign_id = $1 and user_id = $2`,
+      [campaign.id, user.id],
+    );
+    const [p] = result.rows;
+    expect(p).toBeDefined();
+    await app.close();
+  });
+
   it("returns 401 when unauthenticated", async () => {
     const app = buildServer(deps);
     const res = await app.inject({
@@ -124,7 +181,7 @@ describe("verify route", () => {
     await app.close();
   });
 
-  it("returns 409 with telegram_error on telegram error", async () => {
+  it("returns 200 when user is a member", async () => {
     const app = buildServer(deps);
     const token = await login(app);
     const res = await app.inject({
@@ -132,10 +189,15 @@ describe("verify route", () => {
       url: `/api/campaigns/${campaign.publicId}/verify`,
       headers: authHeaders(token),
     });
-    expect(res.statusCode).toBe(409);
-    const body = res.json() as { error: string; reason: string; campaignId: string };
-    expect(body.error).toBe("telegram_error");
-    expect(body.reason).toMatch(/^telegram_/);
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      verified: boolean;
+      memberStatus: string;
+      campaignId: string;
+      cached: boolean;
+    };
+    expect(body.verified).toBe(true);
+    expect(body.memberStatus).toBe("member");
     expect(body.campaignId).toBe(campaign.publicId);
     await app.close();
   });
@@ -192,11 +254,14 @@ describe("verify route", () => {
       url: `/api/campaigns/${campaign.publicId}/verify?force=1`,
       headers: authHeaders(token),
     });
-    expect(res.statusCode).toBe(409);
-    const body = res.json() as { error: string; reason: string; campaignId: string };
-    expect(body.error).toBe("telegram_error");
-    expect(body.reason).toMatch(/^telegram_/);
-    expect(body.campaignId).toBe(campaign.publicId);
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      verified: boolean;
+      memberStatus: string;
+      campaignId: string;
+      cached: boolean;
+    };
+    expect(body.verified).toBe(true);
     await app.close();
   });
 });

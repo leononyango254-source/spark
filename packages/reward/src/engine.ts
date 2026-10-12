@@ -1,6 +1,17 @@
-import type { Db } from "@spark/db";
-import type { RewardRow } from "@spark/db";
-import { listSettleableRewards, updateRewardStatus, createReward, findCampaignById, findParticipationById, nextRewardNonce, updateParticipationStatus } from "@spark/db";
+import type { Db, RewardRow } from "@spark/db";
+import {
+  createReward,
+  findCampaignById,
+  findParticipationById,
+  findReferral,
+  findRewardById,
+  listSettleableRewards,
+  nextRewardNonce,
+  reserveCampaignBudget,
+  updateParticipationStatus,
+  updateReferralStatus,
+  updateRewardStatus,
+} from "@spark/db";
 
 export interface RewardEngine {
   authorizeForParticipation(campaignId: string, participationId: string): Promise<RewardRow[]>;
@@ -26,6 +37,19 @@ export function createRewardEngine(deps: { db: Db }): RewardEngine {
 
       if (participation.status !== "VERIFIED") return [];
 
+      // Check for qualified referral
+      const referral = await findReferral(db, campaignId, participation.userId);
+      const hasQualifiedReferral =
+        referral && referral.status === "QUALIFIED" && campaign.referralRewardMicroUsdc > 0n;
+
+      // Calculate total amount to reserve
+      const totalAmount =
+        campaign.rewardMicroUsdc + (hasQualifiedReferral ? campaign.referralRewardMicroUsdc : 0n);
+
+      // Atomically reserve budget
+      const reserved = await reserveCampaignBudget(db, campaignId, totalAmount);
+      if (!reserved) return [];
+
       const created: RewardRow[] = [];
 
       const userReward = await createReward(db, {
@@ -42,7 +66,26 @@ export function createRewardEngine(deps: { db: Db }): RewardEngine {
       });
       if (userReward) created.push(userReward);
 
-await updateParticipationStatus(db, participationId, "REWARD_PENDING", {});
+      if (hasQualifiedReferral) {
+        const referralReward = await createReward(db, {
+          campaignId,
+          participationId,
+          rewardType: "REFERRAL",
+          recipientUserId: referral.referrerUserId,
+          recipientWallet: "0x0000000000000000000000000000000000000000",
+          amountMicroUsdc: campaign.referralRewardMicroUsdc,
+          authorizationNonce: await nextRewardNonce(db),
+          authorizationExpiresAt: new Date(Date.now() + 7 * 24 * 3_600_000),
+          status: "AUTHORIZED",
+          chainId: campaign.chainId,
+        });
+        if (referralReward) {
+          created.push(referralReward);
+          await updateReferralStatus(db, referral.id, "REWARD_PENDING");
+        }
+      }
+
+      await updateParticipationStatus(db, participationId, "REWARD_PENDING", {});
       return created;
     },
 
@@ -60,7 +103,17 @@ await updateParticipationStatus(db, participationId, "REWARD_PENDING", {});
     },
 
     async markPaid(rewardId) {
+      const reward = await findRewardById(db, rewardId);
       await updateRewardStatus(db, rewardId, "PAID", { confirmedAt: new Date() });
+      if (reward?.rewardType === "REFERRAL" && reward.participationId) {
+        const participation = await findParticipationById(db, reward.participationId);
+        if (participation) {
+          const referral = await findReferral(db, reward.campaignId, participation.userId);
+          if (referral && referral.status === "REWARD_PENDING") {
+            await updateReferralStatus(db, referral.id, "PAID");
+          }
+        }
+      }
     },
 
     async markSubmissionFailed(rewardId) {

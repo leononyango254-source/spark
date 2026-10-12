@@ -1,4 +1,10 @@
-import { findCampaignByPublicId, findMembershipTask } from "@spark/db";
+import {
+  createParticipation,
+  findCampaignByPublicId,
+  findMembershipTask,
+  findParticipation,
+  updateParticipationStatus,
+} from "@spark/db";
 import { verifyChannelMembership } from "@spark/telegram";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -77,11 +83,37 @@ export function registerVerifyRoutes(app: FastifyInstance, deps: ApiDeps): void 
           memberStatus: result.memberStatus,
           expiresAt: Date.now() + deps.membershipCache.ttlMs,
         });
+
+        const participation =
+          (await findParticipation(deps.db, campaign.id, user.id)) ??
+          (await createParticipation(deps.db, {
+            campaignId: campaign.id,
+            userId: user.id,
+            taskId: task.id,
+          }));
+
+        await deps.referralEngine.qualify(campaign.id, user.id).catch(() => {
+          // qualification never blocks verification
+        });
+
+        let rewardsAuthorized = 0;
+        if (participation.status === "STARTED" || participation.status === "PENDING_VERIFICATION") {
+          await updateParticipationStatus(deps.db, participation.id, "VERIFIED", {
+            verifiedAt: new Date(),
+          });
+          const rewards = await deps.rewardEngine.authorizeForParticipation(
+            campaign.id,
+            participation.id,
+          );
+          rewardsAuthorized = rewards.length;
+        }
+
         return reply.send({
           verified: true,
           memberStatus: result.memberStatus,
           campaignId: campaign.publicId,
           cached: false,
+          rewardsAuthorized,
         });
       }
 

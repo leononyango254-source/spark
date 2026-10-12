@@ -1,8 +1,9 @@
+import type { createCampaignEngine } from "@spark/campaign";
+import { findCampaignByPublicId } from "@spark/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { extractToken, resolveSession } from "../auth/resolveSession";
 import type { ApiDeps } from "../server";
-import { createCampaignEngine } from "@spark/campaign";
 
 const createCampaignBody = z.object({
   creatorId: z.string().min(1),
@@ -27,16 +28,32 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
 
     const campaignEngine = deps.campaignEngine as ReturnType<typeof createCampaignEngine>;
-    const created = await campaignEngine.createCampaign({
+    const createInput: {
+      creatorId: string;
+      chainId: number;
+      rewardMicroUsdc: bigint;
+      referralRewardMicroUsdc: bigint;
+      budgetMicroUsdc: bigint;
+      maxParticipants?: number;
+      targetChatId?: bigint;
+      targetChatUsername?: string;
+    } = {
       creatorId: parsed.data.creatorId,
       chainId: parsed.data.chainId,
       rewardMicroUsdc: toBigInt(parsed.data.rewardMicroUsdc),
       referralRewardMicroUsdc: toBigInt(parsed.data.referralRewardMicroUsdc),
       budgetMicroUsdc: toBigInt(parsed.data.budgetMicroUsdc),
-      maxParticipants: parsed.data.maxParticipants ? Number(parsed.data.maxParticipants) : undefined,
-      targetChatId: parsed.data.targetChatId ? BigInt(parsed.data.targetChatId) : undefined,
-      targetChatUsername: parsed.data.targetChatUsername,
-    });
+    };
+    if (parsed.data.maxParticipants !== undefined) {
+      createInput.maxParticipants = Number(parsed.data.maxParticipants);
+    }
+    if (parsed.data.targetChatId !== undefined) {
+      createInput.targetChatId = BigInt(parsed.data.targetChatId);
+    }
+    if (parsed.data.targetChatUsername !== undefined) {
+      createInput.targetChatUsername = parsed.data.targetChatUsername;
+    }
+    const created = await campaignEngine.createCampaign(createInput);
     return reply.send({
       id: created.id,
       publicId: created.publicId,
@@ -55,8 +72,11 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     const parsed = fundCampaignBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
 
+    const campaign = await findCampaignByPublicId(deps.db, publicId);
+    if (!campaign) return reply.code(404).send({ error: "not_found" });
+
     const updated = await deps.campaignEngine!.fundCampaign(
-      publicId,
+      campaign.id,
       toBigInt(parsed.data.amountMicroUsdc),
     );
     return reply.send({ id: updated.id, status: updated.status });
@@ -70,9 +90,34 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     if (!user) return reply.code(401).send({ error: "unauthenticated" });
 
     const { publicId } = request.params as { publicId: string };
-    const activated = await deps.campaignEngine!.activateCampaign(publicId);
+
+    const campaign = await findCampaignByPublicId(deps.db, publicId);
+    if (!campaign) return reply.code(404).send({ error: "not_found" });
+
+    const activated = await deps.campaignEngine!.activateCampaign(campaign.id);
     return reply.send({ id: activated.id, status: activated.status });
   });
+
+  app.get<{ Params: { publicId: string } }>(
+    "/api/campaigns/:publicId/referral-link",
+    async (request, reply) => {
+      const token = extractToken(request.headers);
+      if (!token) return reply.code(401).send({ error: "unauthenticated" });
+      const user = await resolveSession(deps.db, token);
+      if (!user) return reply.code(401).send({ error: "unauthenticated" });
+
+      const campaign = await findCampaignByPublicId(deps.db, request.params.publicId);
+      if (!campaign) return reply.code(404).send({ error: "not_found" });
+
+      const referralCode = await deps.referralEngine.getOrCreateReferralCode(deps.db, {
+        campaignId: campaign.id,
+        referrerUserId: user.id,
+        generate: () => Math.random().toString(36).substring(2, 10),
+      });
+
+      return reply.send({ referralCode });
+    },
+  );
 
   app.get("/api/campaigns/:publicId/stats", async (request, reply) => {
     const token = extractToken(request.headers);
@@ -82,7 +127,10 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     if (!user) return reply.code(401).send({ error: "unauthenticated" });
 
     const { publicId } = request.params as { publicId: string };
-    const stats = await deps.campaignEngine!.getCampaignStats(publicId);
+    const campaign = await findCampaignByPublicId(deps.db, publicId);
+    if (!campaign) return reply.code(404).send({ error: "not_found" });
+
+    const stats = await deps.campaignEngine!.getCampaignStats(campaign.id);
     return reply.send(stats);
   });
 
