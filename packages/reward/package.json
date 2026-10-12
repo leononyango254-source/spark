@@ -9,7 +9,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@spark/domain": "workspace:*"
+    "@spark/domain": "workspace:*",
+    "@spark/db": "workspace:*"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

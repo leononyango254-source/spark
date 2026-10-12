@@ -11,6 +11,7 @@
     "@spark/arc": "workspace:*",
     "@spark/db": "workspace:*",
     "@spark/ledger": "workspace:*",
+    "@spark/reward": "workspace:*",
     "@spark/rewards": "workspace:*",
     "@spark/wallet": "workspace:*",
     "pg-boss": "^10.1.0"

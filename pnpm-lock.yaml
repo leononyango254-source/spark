@@ -291,6 +291,9 @@ importers:
 
   packages/reward:
     dependencies:
+      '@spark/db':
+        specifier: workspace:*
+        version: link:../db
       '@spark/domain':
         specifier: workspace:*
         version: link:../domain
@@ -316,6 +319,9 @@ importers:
       '@spark/ledger':
         specifier: workspace:*
         version: link:../packages/ledger
+      '@spark/reward':
+        specifier: workspace:*
+        version: link:../packages/reward
       '@spark/rewards':
         specifier: workspace:*
         version: link:../packages/rewards
