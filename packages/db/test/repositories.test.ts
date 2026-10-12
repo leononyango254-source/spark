@@ -155,4 +155,91 @@ describe("repositories", () => {
     expect(verified.status).toBe("VERIFIED");
     expect(verified.verifiedAt).not.toBeNull();
   });
+
+  it("attributes referrals first-wins and advances lifecycle", async () => {
+    const { createCampaign, upsertReferralAttribution, findReferral, updateReferralStatus } =
+      await import("../src");
+    const a = await upsertUserByTelegramId(h.db, { telegramUserId: 8300n });
+    const b = await upsertUserByTelegramId(h.db, { telegramUserId: 8301n });
+    const c = await createCampaign(h.db, {
+      publicId: "pubref000000000001",
+      creatorId: a.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 50_000n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 0n,
+    });
+    const first = await upsertReferralAttribution(h.db, {
+      campaignId: c.id,
+      referrerUserId: a.id,
+      referredUserId: b.id,
+      referralCode: "code0001",
+    });
+    expect(first?.status).toBe("ATTRIBUTED");
+
+    const again = await upsertReferralAttribution(h.db, {
+      campaignId: c.id,
+      referrerUserId: a.id,
+      referredUserId: b.id,
+      referralCode: "code0001",
+    });
+    expect(again?.id).toBe(first?.id);
+
+    const qualified = await updateReferralStatus(h.db, first!.id, "QUALIFIED", {
+      qualifiedAt: new Date(),
+    });
+    expect(qualified.status).toBe("QUALIFIED");
+    expect((await findReferral(h.db, c.id, b.id))?.qualifiedAt).not.toBeNull();
+  });
+
+  it("returns null for self-referral", async () => {
+    const { createCampaign, upsertReferralAttribution } = await import("../src");
+    const a = await upsertUserByTelegramId(h.db, { telegramUserId: 8302n });
+    const c = await createCampaign(h.db, {
+      publicId: "pubref000000000002",
+      creatorId: a.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 50_000n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 0n,
+    });
+    expect(
+      await upsertReferralAttribution(h.db, {
+        campaignId: c.id,
+        referrerUserId: a.id,
+        referredUserId: a.id,
+        referralCode: "self0001",
+      }),
+    ).toBeNull();
+  });
+
+  it("issues one referral code per referrer and resolves referrer by code", async () => {
+    const { createCampaign, getOrCreateReferralCode, findReferrerByCode } = await import("../src");
+    const a = await upsertUserByTelegramId(h.db, { telegramUserId: 8303n });
+    const c = await createCampaign(h.db, {
+      publicId: "pubref000000000003",
+      creatorId: a.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 50_000n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 0n,
+    });
+    const code1 = await getOrCreateReferralCode(h.db, {
+      campaignId: c.id,
+      referrerUserId: a.id,
+      generate: () => "code0007",
+    });
+    const code2 = await getOrCreateReferralCode(h.db, {
+      campaignId: c.id,
+      referrerUserId: a.id,
+      generate: () => "code9999",
+    });
+    expect(code2).toBe(code1);
+    expect(code1).toBe("code0007");
+    expect((await findReferrerByCode(h.db, c.id, "code0007"))?.id).toBe(a.id);
+    expect(await findReferrerByCode(h.db, c.id, "nope1234")).toBeNull();
+  });
 });
