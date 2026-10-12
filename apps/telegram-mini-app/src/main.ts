@@ -102,7 +102,10 @@ async function bootstrap(): Promise<void> {
 
   try {
     const raw = (launchParams.initDataRaw as string) ?? "";
-    state.auth = await authenticate(apiOrigin, raw);
+    const referral = state.launch
+      ? { referralCode: state.launch.referralCode, campaignPublicId: state.launch.publicId }
+      : undefined;
+    state.auth = await authenticate(apiOrigin, raw, referral as any);
   } catch (e) {
     state.authError = (e as Error).message;
   } finally {

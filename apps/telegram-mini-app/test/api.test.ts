@@ -62,6 +62,25 @@ describe("api", () => {
     });
   });
 
+  it("includes referral context in the auth request", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    globalThis.fetch = (async (url: string, init: { body?: string }) => {
+      calls.push({ url: String(url), body: init?.body ? JSON.parse(init.body) : undefined });
+      return { ok: true, json: async () => ({ token: "t", expiresAt: "", user: {} }) };
+    }) as unknown as typeof fetch;
+
+    const { authenticate } = await import("../src/api");
+    await authenticate("https://api.example", "raw-init-data", {
+      referralCode: "code1234",
+      campaignPublicId: "pub1234567890abcd",
+    });
+    expect(calls[0]!.body).toMatchObject({
+      initData: "raw-init-data",
+      referralCode: "code1234",
+      campaignPublicId: "pub1234567890abcd",
+    });
+  });
+
   describe("verify", () => {
     it("returns VerifyResponse on success", async () => {
       const mockResponse: VerifyResponse = {
