@@ -289,6 +289,12 @@ importers:
         specifier: ^0.44.0
         version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)
 
+  packages/reward:
+    dependencies:
+      '@spark/domain':
+        specifier: workspace:*
+        version: link:../domain
+
   packages/rewards:
     dependencies:
       '@spark/domain':
