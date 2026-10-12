@@ -294,4 +294,37 @@ describe("repositories", () => {
     expect(paid.status).toBe("PAID");
     expect((await listSettleableRewards(h.db, 10)).map((r) => r.id)).not.toContain(reward.id);
   });
+
+  it("appends ledger entries idempotently", async () => {
+    const { createCampaign, appendLedgerEntry, findLedgerEntryByIdempotencyKey } = await import(
+      "../src"
+    );
+    const a = await upsertUserByTelegramId(h.db, { telegramUserId: 8500n });
+    const c = await createCampaign(h.db, {
+      publicId: "publ3d000000000001",
+      creatorId: a.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 0n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 1_000_000n,
+    });
+    await appendLedgerEntry(h.db, {
+      campaignId: c.id,
+      entryType: "CAMPAIGN_FUNDING",
+      amountMicroUsdc: 1_000_000n,
+      direction: 1,
+      idempotencyKey: `funding:${c.id}`,
+    });
+    await appendLedgerEntry(h.db, {
+      campaignId: c.id,
+      entryType: "CAMPAIGN_FUNDING",
+      amountMicroUsdc: 1_000_000n,
+      direction: 1,
+      idempotencyKey: `funding:${c.id}`,
+    });
+    const row = await findLedgerEntryByIdempotencyKey(h.db, `funding:${c.id}`);
+    expect(row?.amountMicroUsdc).toBe(1_000_000n);
+    expect(row?.direction).toBe(1);
+  });
 });
