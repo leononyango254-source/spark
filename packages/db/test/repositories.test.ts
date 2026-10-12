@@ -242,4 +242,56 @@ describe("repositories", () => {
     expect((await findReferrerByCode(h.db, c.id, "code0007"))?.id).toBe(a.id);
     expect(await findReferrerByCode(h.db, c.id, "nope1234")).toBeNull();
   });
+
+  it("creates rewards, lists settleable ones, and advances status", async () => {
+    const {
+      createCampaign,
+      createMembershipTask,
+      createParticipation,
+      createReward,
+      listSettleableRewards,
+      updateRewardStatus,
+      nextRewardNonce,
+      findRewardByType,
+      countRewardsByStatus,
+    } = await import("../src");
+    const a = await upsertUserByTelegramId(h.db, { telegramUserId: 8400n });
+    const c = await createCampaign(h.db, {
+      publicId: "pubrw000000000001",
+      creatorId: a.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 50_000n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 1_000_000n,
+    });
+    const task = await createMembershipTask(h.db, {
+      campaignId: c.id,
+      rewardMicroUsdc: 100_000n,
+      chatId: "-1002",
+    });
+    const p = await createParticipation(h.db, { campaignId: c.id, userId: a.id, taskId: task.id });
+
+    const nonce = await nextRewardNonce(h.db);
+    const reward = await createReward(h.db, {
+      campaignId: c.id,
+      participationId: p.id,
+      rewardType: "USER_COMPLETION",
+      recipientUserId: a.id,
+      recipientWallet: "0xabc",
+      amountMicroUsdc: 100_000n,
+      authorizationNonce: nonce,
+      authorizationExpiresAt: new Date(Date.now() + 3_600_000),
+      status: "AUTHORIZED",
+      chainId: 5042002,
+    });
+    expect(reward.status).toBe("AUTHORIZED");
+    expect((await findRewardByType(h.db, c.id, p.id, "USER_COMPLETION"))?.id).toBe(reward.id);
+    expect((await countRewardsByStatus(h.db, c.id)).AUTHORIZED).toBe(1);
+
+    expect((await listSettleableRewards(h.db, 10)).map((r) => r.id)).toContain(reward.id);
+    const paid = await updateRewardStatus(h.db, reward.id, "PAID", { confirmedAt: new Date() });
+    expect(paid.status).toBe("PAID");
+    expect((await listSettleableRewards(h.db, 10)).map((r) => r.id)).not.toContain(reward.id);
+  });
 });
