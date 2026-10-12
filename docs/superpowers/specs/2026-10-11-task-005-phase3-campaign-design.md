@@ -94,20 +94,28 @@ export interface CampaignEngine {
 
 ```ts
 export interface ReferralEngine {
-  buildLink(campaignPublicId: string, botUsername: string, appName: string): ReferralLink;
-  attribute(input: AttributeInput): Promise<ReferralRow | null>; // first-wins, idempotent, no self-ref
-  freezeAttribution(campaignId: string, referredUserId: string): Promise<void>;
+  linkForReferrer(input: {
+    campaignId: string;
+    publicId: string;
+    referrerUserId: string;
+    botUsername: string;
+    appName: string;
+  }): Promise<ReferralLink>; // stable `referralCode` + c_<publicId>_<code> startapp + deep link
+  attribute(input: {
+    campaignPublicId: string;
+    referralCode: string;
+    referredUserId: string;
+  }): Promise<ReferralRow | null>; // first-wins, idempotent, no self-ref
   qualify(campaignId: string, referredUserId: string): Promise<ReferralRow | null>;
-  markRewardPending(referralId: string): Promise<void>;
-  markPaid(referralId: string): Promise<void>;
 }
 ```
 Rules (PRD §19–§20):
 - Attribution happens at `/api/auth/telegram` when the request body includes a `referralCode`, resolved server-side to (campaign, referrer). Client-submitted referrer id is never trusted.
 - Unique `(campaignId, referredUserId)`; first valid attribution wins (no overwrite); self-referral rejected; repeat auth is idempotent.
 - Referral rows are `ATTRIBUTED` only — no payable reward until the referred user is verified.
-- Freeze: once the referred user has a Participation row, attribution cannot change.
+- Freeze: participation creation refuses to attribute a referrer afterwards (a referred user with a Participation row can never be attributed).
 - Qualify: after successful verification, `ATTRIBUTED → QUALIFIED`.
+- The `QUALIFIED → REWARD_PENDING → PAID` milestones of the referral row are driven by the **RewardEngine** (authorization of the `REFERRAL` reward, then its settlement), not the ReferralEngine.
 
 ## @spark/reward — RewardEngine + SettlementPort
 
@@ -126,9 +134,10 @@ export interface RewardEngine {
   markSubmissionFailed(rewardId: string, reason: string): Promise<void>;
 }
 ```
-- `authorizeForParticipation`: only if campaign ACTIVE, participation VERIFIED; creates USER_COMPLETION reward (amount = campaign.rewardMicroUsdc) and, if a QUALIFIED referral exists, a REFERRAL reward (amount = campaign.referralRewardMicroUsdc). Both get unique `authorizationNonce` and `authorizationExpiresAt`. `ELIGIBLE → AUTHORIZED` in one step.
+- `authorizeForParticipation`: only if campaign ACTIVE, participation VERIFIED; creates USER_COMPLETION reward (amount = campaign.rewardMicroUsdc) and, if a QUALIFIED referral exists, a REFERRAL reward (amount = campaign.referralRewardMicroUsdc). Both get unique `authorizationNonce` and `authorizationExpiresAt`. `ELIGIBLE → AUTHORIZED` in one step. Authorizing a REFERRAL reward moves the referral row `QUALIFIED → REWARD_PENDING`.
 - **Atomic budget reservation**: reserving budget is a single conditional UPDATE on campaigns (`balanceMicroUsdc -= amount` where balance >= amount), done in a transaction; failure aborts that reward with no partial rows.
 - Unique `(campaignId, participationId, rewardType)` guarantees one reward per type (idempotent re-verify).
+- Settling a REFERRAL reward (markPaid) moves the referral row `REWARD_PENDING → PAID` alongside the reward states.
 - `MockSettlement`: `submitPayout` returns a fake hash immediately and `getPayoutStatus` returns `confirmed`; used by the settlement worker in Phase 3.
 
 ## Settlement Worker (worker/src/settlement)
