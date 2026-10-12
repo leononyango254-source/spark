@@ -66,3 +66,27 @@ describe("CampaignEngine create", () => {
     expect((await findCampaignById(db, created.id))?.rewardMicroUsdc).toBe(100_000n);
   });
 });
+
+describe("CampaignEngine lifecycle", () => {
+  it("funds, activates, pauses, resumes, and closes with threshold checks", async () => {
+    const engine = createCampaignEngine({ db });
+    const created = await engine.createCampaign({
+      creatorId: await creator(9100),
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 50_000n,
+      budgetMicroUsdc: 1_000_000n,
+      maxParticipants: 10,
+      targetChatId: -1001234567891n,
+    });
+    await updateCampaignStatus(db, created.id, "FUNDING");
+    await expect(engine.fundCampaign(created.id, 100_000n)).rejects.toThrow(/insufficient/);
+    await engine.fundCampaign(created.id, 1_500_000n);
+    expect((await engine.getCampaignStats(created.id)).balanceMicroUsdc).toBe(1_500_000n);
+    expect((await engine.activateCampaign(created.id)).status).toBe("ACTIVE");
+    expect((await engine.pauseCampaign(created.id)).status).toBe("PAUSED");
+    expect((await engine.resumeCampaign(created.id)).status).toBe("ACTIVE");
+    expect((await engine.closeCampaign(created.id)).status).toBe("CLOSED");
+    await expect(engine.pauseCampaign(created.id)).rejects.toThrow(/invalid campaign transition/);
+  });
+});
