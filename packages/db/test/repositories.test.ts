@@ -115,4 +115,44 @@ describe("repositories", () => {
     expect(task?.rewardMicroUsdc).toBe(100_000n);
     expect(((task?.config ?? {}) as { chat_id?: string }).chat_id).toBe("-100999");
   });
+
+  it("creates a participation, freezes the referrer, and advances status", async () => {
+    const {
+      createCampaign,
+      createMembershipTask,
+      createParticipation,
+      findParticipation,
+      updateParticipationStatus,
+      setParticipationReferrer,
+    } = await import("../src");
+    const a = await upsertUserByTelegramId(h.db, { telegramUserId: 8200n });
+    const b = await upsertUserByTelegramId(h.db, { telegramUserId: 8201n });
+    const c = await createCampaign(h.db, {
+      publicId: "pubpart00000000001",
+      creatorId: a.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 50_000n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 0n,
+    });
+    const task = await createMembershipTask(h.db, {
+      campaignId: c.id,
+      rewardMicroUsdc: 100_000n,
+      chatId: "-1001",
+    });
+    const p = await createParticipation(h.db, { campaignId: c.id, userId: b.id, taskId: task.id });
+    expect(p.status).toBe("STARTED");
+
+    await setParticipationReferrer(h.db, p.id, { referrerUserId: a.id, referralCode: "abc12345" });
+    const found = await findParticipation(h.db, c.id, b.id);
+    expect(found?.referrerUserId).toBe(a.id);
+    expect(found?.referralCodeUsed).toBe("abc12345");
+
+    const verified = await updateParticipationStatus(h.db, p.id, "VERIFIED", {
+      verifiedAt: new Date(),
+    });
+    expect(verified.status).toBe("VERIFIED");
+    expect(verified.verifiedAt).not.toBeNull();
+  });
 });
