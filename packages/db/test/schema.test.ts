@@ -96,18 +96,18 @@ describe("schema constraints", () => {
     const b = await seedUser(7004);
     const cid = await seedCampaign(a);
     await h.pool.query(
-      "INSERT INTO referrals (campaign_id, referrer_user_id, referred_user_id, referral_code) VALUES ($1, $2, $3, 'abc')",
+      "INSERT INTO referrals (campaign_id, referrer_user_id, referred_user_id, referral_code, status) VALUES ($1, $2, $3, 'abc', 'ATTRIBUTED')",
       [cid, a, b],
     );
     await expect(
       h.pool.query(
-        "INSERT INTO referrals (campaign_id, referrer_user_id, referred_user_id, referral_code) VALUES ($1, $2, $3, 'abc')",
+        "INSERT INTO referrals (campaign_id, referrer_user_id, referred_user_id, referral_code, status) VALUES ($1, $2, $3, 'abc', 'ATTRIBUTED')",
         [cid, a, b],
       ),
     ).rejects.toSatisfy((e) => pgErrorCode(e) === "23505");
     await expect(
       h.pool.query(
-        "INSERT INTO referrals (campaign_id, referrer_user_id, referred_user_id, referral_code) VALUES ($1, $2, $2, 'self')",
+        "INSERT INTO referrals (campaign_id, referrer_user_id, referred_user_id, referral_code, status) VALUES ($1, $2, $2, 'self', 'ATTRIBUTED')",
         [cid, a],
       ),
     ).rejects.toSatisfy((e) => pgErrorCode(e) === "23514");
@@ -155,5 +155,58 @@ describe("schema constraints", () => {
     await expect(
       h.pool.query("DELETE FROM ledger_entries WHERE idempotency_key = 'k1'"),
     ).rejects.toThrow(/append-only/);
+  });
+
+  it("supports phase 3 campaign + referral lifecycle columns", async () => {
+    const a = await seedUser(7100);
+    const b = await seedUser(7101);
+    const { rows } = await h.pool.query<{ id: string }>(
+      `INSERT INTO campaigns
+         (public_id, creator_id, chain_id, reward_micro_usdc, referral_reward_micro_usdc,
+          budget_micro_usdc, balance_micro_usdc, max_participants)
+       VALUES ('p3pubid0000000001', $1, 5042002, 100000, 50000, 25000000, 0, 10) RETURNING id`,
+      [a],
+    );
+    const cid = rows[0]!.id;
+    const camp = await h.pool.query<{ participant_count: number; max_participants: number }>(
+      "SELECT participant_count, max_participants FROM campaigns WHERE id = $1",
+      [cid],
+    );
+    expect(camp.rows[0]!.participant_count).toBe(0);
+    expect(camp.rows[0]!.max_participants).toBe(10);
+
+    const ref = await h.pool.query<{ status: string }>(
+      `INSERT INTO referrals (campaign_id, referrer_user_id, referred_user_id, referral_code, status)
+       VALUES ($1, $2, $3, 'abc12345', 'ATTRIBUTED') RETURNING status`,
+      [cid, a, b],
+    );
+    expect(ref.rows[0]!.status).toBe("ATTRIBUTED");
+
+    const code = await h.pool.query<{ code: string }>(
+      `INSERT INTO referral_codes (campaign_id, referrer_user_id, code)
+       VALUES ($1, $2, 'code0001') RETURNING code`,
+      [cid, a],
+    );
+    expect(code.rows[0]!.code).toBe("code0001");
+    await expect(
+      h.pool.query(
+        `INSERT INTO referral_codes (campaign_id, referrer_user_id, code)
+         VALUES ($1, $2, 'code0002')`,
+        [cid, a],
+      ),
+    ).rejects.toSatisfy((e) => pgErrorCode(e) === "23505");
+  });
+
+  it("rejects participant_count over max_participants", async () => {
+    const uid = await seedUser(7102);
+    await expect(
+      h.pool.query(
+        `INSERT INTO campaigns
+           (public_id, creator_id, chain_id, reward_micro_usdc, referral_reward_micro_usdc,
+            budget_micro_usdc, balance_micro_usdc, max_participants, participant_count)
+         VALUES ('p3pubid0000000002', $1, 5042002, 100000, 0, 25000000, 0, 1, 2)`,
+        [uid],
+      ),
+    ).rejects.toSatisfy((e) => pgErrorCode(e) === "23514");
   });
 });

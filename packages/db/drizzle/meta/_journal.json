@@ -15,6 +15,13 @@
       "when": 1791724562689,
       "tag": "0001_ledger-append-only",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791770640406,
+      "tag": "0002_luxuriant_the_leader",
+      "breakpoints": true
     }
   ]
 }
