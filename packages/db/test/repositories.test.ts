@@ -54,4 +54,65 @@ describe("repositories", () => {
     expect(found?.id).toBe(created.id);
     expect(found?.rewardMicroUsdc).toBe(100_000n);
   });
+
+  it("drives campaign lifecycle and reserves budget atomically", async () => {
+    const {
+      createCampaign,
+      findCampaignById,
+      setCampaignFunded,
+      updateCampaignStatus,
+      reserveCampaignBudget,
+      updateCampaignConfig,
+      incrementParticipantCount,
+    } = await import("../src");
+    const creator = await upsertUserByTelegramId(h.db, { telegramUserId: 8100n });
+    const c = await createCampaign(h.db, {
+      publicId: "publife00000000001",
+      creatorId: creator.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 50_000n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 0n,
+      maxParticipants: 5,
+    });
+    expect((await findCampaignById(h.db, c.id))?.status).toBe("DRAFT");
+
+    const configured = await updateCampaignConfig(h.db, c.id, { rewardMicroUsdc: 120_000n });
+    expect(configured.rewardMicroUsdc).toBe(120_000n);
+
+    await updateCampaignStatus(h.db, c.id, "FUNDING");
+    await setCampaignFunded(h.db, c.id, 1_000_000n);
+    expect((await findCampaignById(h.db, c.id))?.balanceMicroUsdc).toBe(1_000_000n);
+
+    expect(await reserveCampaignBudget(h.db, c.id, 100_000n)).toBe(true);
+    expect((await findCampaignById(h.db, c.id))?.balanceMicroUsdc).toBe(900_000n);
+    expect(await reserveCampaignBudget(h.db, c.id, 10_000_000n)).toBe(false);
+    expect((await findCampaignById(h.db, c.id))?.balanceMicroUsdc).toBe(900_000n);
+
+    expect(await incrementParticipantCount(h.db, c.id)).toBe(true);
+    expect((await findCampaignById(h.db, c.id))?.participantCount).toBe(1);
+  });
+
+  it("creates a membership task and finds it", async () => {
+    const { createCampaign, createMembershipTask, findMembershipTask } = await import("../src");
+    const creator = await upsertUserByTelegramId(h.db, { telegramUserId: 8101n });
+    const c = await createCampaign(h.db, {
+      publicId: "pubtask00000000001",
+      creatorId: creator.id,
+      chainId: 5042002,
+      rewardMicroUsdc: 100_000n,
+      referralRewardMicroUsdc: 0n,
+      budgetMicroUsdc: 1_000_000n,
+      balanceMicroUsdc: 0n,
+    });
+    await createMembershipTask(h.db, {
+      campaignId: c.id,
+      rewardMicroUsdc: 100_000n,
+      chatId: "-100999",
+    });
+    const task = await findMembershipTask(h.db, c.id);
+    expect(task?.rewardMicroUsdc).toBe(100_000n);
+    expect(((task?.config ?? {}) as { chat_id?: string }).chat_id).toBe("-100999");
+  });
 });
