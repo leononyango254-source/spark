@@ -38,3 +38,39 @@ export async function findUserById(db: Db, id: string): Promise<UserRow | null> 
   const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return row ?? null;
 }
+
+export async function updateUserWallet(
+  db: Db,
+  userId: string,
+  wallet: { address: string; provider: string; chainId: number },
+): Promise<UserRow> {
+  const [row] = await db
+    .update(users)
+    .set({
+      walletAddress: wallet.address,
+      walletProvider: wallet.provider,
+      walletStatus: "connected",
+      walletChainId: wallet.chainId,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+  if (!row) throw new Error("updateUserWallet: no row returned");
+  return row;
+}
+
+export async function clearUserWallet(db: Db, userId: string): Promise<UserRow> {
+  const [row] = await db
+    .update(users)
+    .set({
+      walletAddress: null,
+      walletProvider: null,
+      walletStatus: "disconnected",
+      walletChainId: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+  if (!row) throw new Error("clearUserWallet: no row returned");
+  return row;
+}
