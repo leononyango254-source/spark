@@ -2,17 +2,22 @@
 
 ## Status
 
-`contracts/src/CampaignEscrow.sol` is seeded from the Phase 0 spike skeleton that **deployed and
-ran end-to-end on Arc testnet** (`0xfd4d0385971F131Fb6f767fd8b4a072F46c9Eb4a`, `cancun` bytecode).
-It is a starting point, **not** the hardened Phase 4 implementation.
+Production Phase 4 `contracts/src/CampaignEscrow.sol`, **deployed to Arc testnet** at
+**`0x9539efAFf246799827E6F5E6Cbc475122710Ef64`** (`cancun` bytecode). Deployer = owner = operator:
+`0xfB4d09d7969d0446C45721E44409d9482eEcDCb1`. Constructor: `usdc = 0x3600…0000`,
+`maxPayoutPerReward = 10_000_000`, `globalPayoutAllowance = 1_000_000_000`.
 
-## Invariants (target)
+The Phase 0 spike (historical, replaced by this production contract) deployed at
+`0xfd4d0385971F131Fb6f767fd8b4a072F46c9Eb4a`.
+
+## Invariants
 
 - Funds leave only through `payReward` (operator, capped) or `closeCampaign` (refund to recorded creator).
-- `maxPayoutMicroUsdc` is immutable; campaign budget only increases.
-- `consumedRewardId` / `consumedNonce` prevent replay.
-- Deadline enforced; campaign binding; recipient + amount binding.
+- `maxPayoutPerReward` / `globalPayoutAllowance` are **owner-settable** (no longer immutable).
+- Replay protection is dual-layer: `processedReward[rewardId]` (globally unique rewardId) + `usedNonce[campaignId][nonce]`; nonces may be consumed out-of-order.
+- Expiry is enforced per payout via the operator-supplied `deadline` (`block.timestamp <= deadline`); recipient + amount are bound per call.
 - Owner/operator split: operator can only `payReward`; owner controls operator, global allowance, pause, budget, close/refund.
+- `pause()` blocks `createCampaign` / `fundCampaign` / `payReward` but **not** `closeCampaign` (funds stay recoverable; no emergency withdrawal).
 - Compromised-operator loss is bounded by `min(globalPayoutAllowance, Σ remaining campaignBalance)`.
 - **No** `withdraw` / `sweep` / `rescue` / `SELFDESTRUCT`.
 

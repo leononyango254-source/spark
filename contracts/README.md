@@ -1,7 +1,8 @@
 # CampaignEscrow (Foundry)
 
-Seeded from the Phase 0 spike that deployed and ran end-to-end on Arc testnet. This is a
-starting point, **not** the hardened Phase 4 implementation. See [`../docs/CONTRACT.md`](../docs/CONTRACT.md).
+Production Phase 4 `CampaignEscrow` (replay protection, per-payout expiry, budget caps,
+pause-without-withdrawal). Deployed to the Arc testnet — see
+[`../docs/CONTRACT.md`](../docs/CONTRACT.md) for the deployed address and status.
 
 ## Build & test
 
