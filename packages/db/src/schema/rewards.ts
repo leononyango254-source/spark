@@ -27,13 +27,15 @@ export const rewards = pgTable(
     recipientUserId: uuid("recipient_user_id")
       .notNull()
       .references(() => users.id),
-    recipientWallet: text("recipient_wallet").notNull(),
+    recipientWallet: text("recipient_wallet"),
+    onChainRewardId: bigint("on_chain_reward_id", { mode: "bigint" }).notNull().unique(),
     amountMicroUsdc: bigint("amount_micro_usdc", { mode: "bigint" }).notNull(),
     authorizationNonce: bigint("authorization_nonce", { mode: "bigint" }).notNull().unique(),
     authorizationExpiresAt: timestamp("authorization_expires_at", {
       withTimezone: true,
     }).notNull(),
     status: rewardStatus("status").notNull().default("ELIGIBLE"),
+    failureReason: text("failure_reason"),
     chainId: integer("chain_id").notNull(),
     transactionHash: text("transaction_hash"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),

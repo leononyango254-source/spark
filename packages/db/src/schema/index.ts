@@ -1,5 +1,6 @@
 export * from "./campaignEvents";
 export * from "./campaigns";
+export * from "./chainCursors";
 export * from "./enums";
 export * from "./fundingHandoffs";
 export * from "./ledger";
