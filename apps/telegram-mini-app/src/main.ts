@@ -1,6 +1,7 @@
 import { init as initSDK, retrieveLaunchParams } from "@telegram-apps/sdk";
 import { type AuthResponse, authenticate, type VerifyResponse, verify as verifyApi } from "./api";
 import { parseStartParam } from "./launch";
+import { walletConnectInit, walletPollStatus, walletDisconnect, type ConnectState } from "./wallet";
 
 const apiOrigin = import.meta.env.VITE_API_ORIGIN;
 if (!apiOrigin) throw new Error("VITE_API_ORIGIN not set");
@@ -54,7 +55,50 @@ function render(): void {
         </button>
         <div id="verify-result"></div>
       </div>
+      <div id="wallet-section" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e0e0e0;">
+        <h2>Wallet Connect</h2>
+        <button id="connect-wallet-btn">Connect Wallet</button>
+        <div id="wallet-status" style="margin: 1rem 0; font-size: 14px;"></div>
+        <button id="disconnect-wallet-btn" style="display: none;">Disconnect</button>
+      </div>
     `;
+
+    const walletStatus = document.getElementById("wallet-status") as HTMLDivElement | null;
+    const connectBtn = document.getElementById("connect-wallet-btn") as HTMLButtonElement | null;
+    const disconnectBtn = document.getElementById("disconnect-wallet-btn") as HTMLButtonElement | null;
+
+    if (connectBtn) {
+      connectBtn.addEventListener("click", async () => {
+        try {
+          const { uri, sessionId } = await walletConnectInit("test-project-id", undefined);
+          window.open(uri, "_blank");
+          const pollInterval = setInterval(async () => {
+            const status = await walletPollStatus();
+            if (walletStatus) {
+              walletStatus.textContent = `Status: ${status.status}`;
+              if (status.status === "connected" && status.address) {
+                if (disconnectBtn) disconnectBtn.style.display = "inline-block";
+                walletStatus.textContent += ` - Address: ${status.address}`;
+              } else {
+                if (disconnectBtn) disconnectBtn.style.display = "none";
+              }
+            }
+            if (status.status === "connected") clearInterval(pollInterval);
+          }, 3000);
+        } catch (e) {
+          if (walletStatus) walletStatus.textContent = `Error: ${(e as Error).message}`;
+        }
+      });
+    }
+
+    if (disconnectBtn) {
+      disconnectBtn.addEventListener("click", () => {
+        walletDisconnect();
+        if (walletStatus) walletStatus.textContent = "Status: disconnected";
+        if (disconnectBtn) disconnectBtn.style.display = "none";
+        if (connectBtn) connectBtn.style.display = "inline-block";
+      });
+    }
 
     const btn = document.getElementById("verify-btn") as HTMLButtonElement | null;
     const result = document.getElementById("verify-result");
