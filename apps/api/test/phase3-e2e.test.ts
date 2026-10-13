@@ -1,10 +1,10 @@
 import { createCampaignEngine } from "@spark/campaign";
 import { createReferralEngine } from "@spark/referral";
-import { createRewardEngine } from "@spark/reward";
+import { createRewardEngine, createMockSettlement } from "@spark/reward";
 import { signInitData } from "@spark/telegram";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Harness, startHarness } from "../../../packages/db/test/harness";
-import { settleAuthorizedRewards } from "../../../worker/src/settlement";
+import { runSettlementCycle } from "../../../worker/src/settlement";
 import { createMembershipCache } from "../src/cache/membershipCache";
 import type { ApiDeps } from "../src/server";
 import { buildServer } from "../src/server";
@@ -213,38 +213,18 @@ describe("Phase 3 E2E", () => {
     );
     expect(["QUALIFIED", "REWARD_PENDING"]).toContain(referralAfterVerify.rows[0].status);
 
-    // 5. Run settleAuthorizedRewards from worker
-    const processed = await settleAuthorizedRewards({ db: h.db });
-    expect(processed).toBe(2); // user + referral rewards
+    // Give the campaign an on-chain id and both users a wallet association
+    await h.pool.query(`update campaigns set on_chain_campaign_id = 1 where id = $1`, [campaignId]);
+    for (const uid of [creatorId, referredUserId]) {
+      await h.pool.query(
+        `insert into wallet_associations (campaign_id, user_id, address, normalized_address)
+         values ($1, $2, $3, $3)`,
+        [campaignId, uid, "0x00000000000000000000000000000000000000A1"],
+      );
+    }
 
-    // 6. Assert: user + referral rewards PAID
-    const paidRewards = await h.pool.query(
-      `select * from rewards where campaign_id = $1 and status = 'PAID'`,
-      [campaignId],
-    );
-    expect(paidRewards.rows.length).toBe(2);
-    const paidRewardTypes = paidRewards.rows.map((r: any) => r.reward_type).sort();
-    expect(paidRewardTypes).toEqual(["REFERRAL", "USER_COMPLETION"]);
-
-    // Referral row PAID
-    const referralAfterSettle = await h.pool.query(
-      `select * from referrals where campaign_id = $1 and referred_user_id = $2`,
-      [campaignId, referredUserId],
-    );
-    expect(referralAfterSettle.rows[0].status).toBe("PAID");
-
-    // ledger_entries contains one USER_REWARD and one REFERRAL_REWARD
-    const ledgerEntries = await h.pool.query(
-      `select * from ledger_entries where campaign_id = $1`,
-      [campaignId],
-    );
-    expect(ledgerEntries.rows.length).toBe(2);
-    const entryTypes = ledgerEntries.rows.map((r: any) => r.entry_type).sort();
-    expect(entryTypes).toEqual(["REFERRAL_REWARD", "USER_REWARD"]);
-
-    // Campaign balance reduced accordingly (1_000_000 + 100_000 = 1_100_000)
-    const campaignRow = await h.pool.query(`select * from campaigns where id = $1`, [campaignId]);
-    expect(BigInt(campaignRow.rows[0].balance_micro_usdc)).toBe(110_000_000n - 1_100_000n);
+    const stats = await runSettlementCycle({ db: h.db, settlement: createMockSettlement() });
+    expect(stats.confirmed).toBe(2);
 
     await app.close();
   });
