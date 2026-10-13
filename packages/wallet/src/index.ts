@@ -7,6 +7,8 @@
 export type Address = `0x${string}`;
 export type Hex = `0x${string}`;
 
+export * from "./viem";
+
 export interface TransactionRequest {
   to: Address;
   data: Hex;
