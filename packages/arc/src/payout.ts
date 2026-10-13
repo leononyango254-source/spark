@@ -7,7 +7,7 @@ import {
   type Hex,
   type PublicClient,
 } from "viem";
-import { campaignEscrowAbi } from "./abi";
+import { campaignEscrowAbi, usdcErc20Abi } from "./abi";
 
 export interface PayRewardArgs {
   campaignId: bigint;
@@ -117,5 +117,25 @@ export function createArcPublicClient(rpcUrl: string, chainId: number): PublicCl
       nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
       rpcUrls: { default: { http: [rpcUrl] } },
     }),
+  });
+}
+
+export function encodeApprove(spender: Address, amount: bigint): Hex {
+  return encodeFunctionData({ abi: usdcErc20Abi, functionName: "approve", args: [spender, amount] });
+}
+
+export function encodeCreateCampaign(creator: Address, budget: bigint, deadline: bigint): Hex {
+  return encodeFunctionData({
+    abi: campaignEscrowAbi,
+    functionName: "createCampaign",
+    args: [creator, budget, deadline],
+  });
+}
+
+export function encodeFundCampaign(campaignId: bigint, amount: bigint): Hex {
+  return encodeFunctionData({
+    abi: campaignEscrowAbi,
+    functionName: "fundCampaign",
+    args: [campaignId, amount],
   });
 }

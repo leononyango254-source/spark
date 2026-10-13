@@ -36,3 +36,11 @@ forward-compatible in Phase 0. `paris` + OpenZeppelin 4.9.6 is the documented fa
 
 - `maxFeePerGas >= max(20 gwei, 2x baseFee)`.
 - Testnet first. Mainnet requires explicit confirmation (PRD §60).
+
+## Settlement (Phase 5)
+
+The worker submits `payReward` as the operator EOA. Configure `ESCROW_ADDRESS`
+(`0x9539efAFf246799827E6F5E6Cbc475122710Ef64` on Arc testnet) and
+`OPERATOR_PRIVATE_KEY` in the worker env. Campaigns must be seeded on-chain first
+(`pnpm --filter @spark/worker seed:campaign <campaign-db-uuid> <budget-micro-usdc>`),
+which records `campaigns.on_chain_campaign_id`.
