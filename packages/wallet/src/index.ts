@@ -36,3 +36,5 @@ export interface WalletProvider {
   sendTransaction(tx: TransactionRequest): Promise<SubmittedTransaction>;
   getReceipt(hash: Hex): Promise<TransactionReceiptInfo | null>;
 }
+
+export * from "./walletConnect";
