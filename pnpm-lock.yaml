@@ -321,6 +321,15 @@ importers:
         specifier: workspace:*
         version: link:../domain
 
+  packages/settlement:
+    dependencies:
+      '@walletconnect/sign-client':
+        specifier: ^2.17.0
+        version: 2.26.0(typescript@5.9.3)(zod@4.6.5)
+      viem:
+        specifier: ^2.21.0
+        version: 2.57.4(typescript@5.9.3)(zod@4.6.5)
+
   packages/telegram: {}
 
   packages/wallet:
