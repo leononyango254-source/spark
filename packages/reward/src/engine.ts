@@ -7,7 +7,9 @@ import {
   findRewardById,
   listSettleableRewards,
   nextRewardNonce,
+  nextRewardRef,
   reserveCampaignBudget,
+  setRewardRecipient,
   updateParticipationStatus,
   updateReferralStatus,
   updateRewardStatus,
@@ -20,6 +22,9 @@ export interface RewardEngine {
   markConfirmed(rewardId: string): Promise<void>;
   markPaid(rewardId: string): Promise<void>;
   markSubmissionFailed(rewardId: string): Promise<void>;
+  markRetrying(rewardId: string): Promise<void>;
+  markFailed(rewardId: string, reason?: string): Promise<void>;
+  setRecipient(rewardId: string, recipientWallet: string): Promise<void>;
 }
 
 export function createRewardEngine(deps: { db: Db }): RewardEngine {
@@ -57,10 +62,10 @@ export function createRewardEngine(deps: { db: Db }): RewardEngine {
         participationId,
         rewardType: "USER_COMPLETION",
         recipientUserId: participation.userId,
-        recipientWallet: "0x0000000000000000000000000000000000000000",
+        onChainRewardId: await nextRewardRef(db),
         amountMicroUsdc: campaign.rewardMicroUsdc,
         authorizationNonce: await nextRewardNonce(db),
-        authorizationExpiresAt: new Date(Date.now() + 7 * 24 * 3_600_000),
+        authorizationExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         status: "AUTHORIZED",
         chainId: campaign.chainId,
       });
@@ -71,11 +76,11 @@ export function createRewardEngine(deps: { db: Db }): RewardEngine {
           campaignId,
           participationId,
           rewardType: "REFERRAL",
-          recipientUserId: referral.referrerUserId,
-          recipientWallet: "0x0000000000000000000000000000000000000000",
+          recipientUserId: participation.userId,
+          onChainRewardId: await nextRewardRef(db),
           amountMicroUsdc: campaign.referralRewardMicroUsdc,
           authorizationNonce: await nextRewardNonce(db),
-          authorizationExpiresAt: new Date(Date.now() + 7 * 24 * 3_600_000),
+          authorizationExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           status: "AUTHORIZED",
           chainId: campaign.chainId,
         });
@@ -116,8 +121,21 @@ export function createRewardEngine(deps: { db: Db }): RewardEngine {
       }
     },
 
+    setRecipient: (rewardId, wallet) => setRewardRecipient(db, rewardId, wallet),
+
+    async markRetrying(rewardId) {
+      await updateRewardStatus(db, rewardId, "RETRYING");
+    },
+
+    async markFailed(rewardId, reason) {
+      await updateRewardStatus(db, rewardId, "FAILED", {
+        failedAt: new Date(),
+        ...(reason ? { failureReason: reason } : {}),
+      });
+    },
+
     async markSubmissionFailed(rewardId) {
-      await updateRewardStatus(db, rewardId, "SUBMISSION_FAILED");
+      await updateRewardStatus(db, rewardId, "SUBMISSION_FAILED", { failedAt: new Date() });
     },
   };
 }

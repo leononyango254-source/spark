@@ -7,18 +7,24 @@ describe("MockSettlement", () => {
     const first = await settlement.submitPayout({
       campaignId: "c1",
       rewardId: "r1",
+      chainCampaignId: 1n,
+      onChainRewardId: 1n,
       nonce: 1n,
       recipientWallet: "0xabc",
       amountMicroUsdc: 100_000n,
+      deadline: 9_999_999_999n,
     });
     expect(first.txHash).toMatch(/^0x[0-9a-f]{64}$/);
     expect(await settlement.getPayoutStatus(first.txHash)).toBe("confirmed");
     const second = await settlement.submitPayout({
       campaignId: "c1",
       rewardId: "r1",
+      chainCampaignId: 1n,
+      onChainRewardId: 1n,
       nonce: 1n,
       recipientWallet: "0xabc",
       amountMicroUsdc: 100_000n,
+      deadline: 9_999_999_999n,
     });
     expect(second.txHash).toBe(first.txHash);
   });

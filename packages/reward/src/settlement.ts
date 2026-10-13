@@ -3,9 +3,12 @@ import { createHash } from "node:crypto";
 export interface PayoutRequest {
   campaignId: string;
   rewardId: string;
+  chainCampaignId: bigint;
+  onChainRewardId: bigint;
   nonce: bigint;
   recipientWallet: string;
   amountMicroUsdc: bigint;
+  deadline: bigint;
 }
 
 export interface SettlementPort {
