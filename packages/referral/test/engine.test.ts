@@ -1,11 +1,8 @@
+import { createCampaign, upsertUserByTelegramId } from "@spark/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  upsertUserByTelegramId,
-  createCampaign,
-} from "@spark/db";
 import { type Harness, startHarness } from "../../db/test/harness";
 import { createReferralEngine } from "../src";
-import { canTransitionReferral, assertReferralTransition } from "../src/state";
+import { assertReferralTransition, canTransitionReferral } from "../src/state";
 
 let h: Harness;
 let db: any;
@@ -59,10 +56,14 @@ describe("linkForReferrer", () => {
       referrerUserId: creator.id,
       publicId: "public1234567890abcdef",
       referralCode: "abc12345",
+      botUsername: "sparkbot",
+      appName: "app",
     });
-    expect(result).toBe(
-      "https://t.me/sparkbot/app?startapp=c_public1234567890abcdef_abc12345",
-    );
+    expect(result).toEqual({
+      startapp: "c_public1234567890abcdef_abc12345",
+      deepLink: "https://t.me/sparkbot/app?startapp=c_public1234567890abcdef_abc12345",
+      referralCode: "abc12345",
+    });
   });
 });
 
@@ -84,6 +85,7 @@ describe("attribute", () => {
       campaignId: campaign.id,
       referrerUserId: creator.id,
       referredUserId: referred.id,
+      referralCode: "testcode1",
     });
     expect(first?.status).toBe("ATTRIBUTED");
 
@@ -91,6 +93,7 @@ describe("attribute", () => {
       campaignId: campaign.id,
       referrerUserId: creator.id,
       referredUserId: referred.id,
+      referralCode: "testcode1",
     });
     expect(again?.id).toBe(first?.id);
 
@@ -98,6 +101,7 @@ describe("attribute", () => {
       campaignId: campaign.id,
       referrerUserId: creator.id,
       referredUserId: creator.id,
+      referralCode: "testcode1",
     });
     expect(self).toBeNull();
   });
@@ -119,6 +123,7 @@ describe("attribute", () => {
       campaignId: campaign.id,
       referrerUserId: creator.id,
       referredUserId: referred.id,
+      referralCode: "testcode2",
     });
 
     await engine.qualify(campaign.id, referred.id);

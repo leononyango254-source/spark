@@ -104,7 +104,7 @@ export function createRewardEngine(deps: { db: Db }): RewardEngine {
 
     async markPaid(rewardId) {
       const reward = await findRewardById(db, rewardId);
-      await updateRewardStatus(db, rewardId, "PAID", { confirmedAt: new Date() });
+      await updateRewardStatus(db, rewardId, "PAID", { paidAt: new Date() });
       if (reward?.rewardType === "REFERRAL" && reward.participationId) {
         const participation = await findParticipationById(db, reward.participationId);
         if (participation) {

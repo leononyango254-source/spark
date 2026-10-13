@@ -20,6 +20,8 @@ export interface ApiDeps {
   rewardEngine: RewardEngine;
   sessionTtlSeconds: number;
   nodeEnv: "development" | "test" | "production";
+  botUsername: string;
+  appName: string;
 }
 
 export function buildServer(deps: ApiDeps): FastifyInstance {

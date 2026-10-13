@@ -3,6 +3,7 @@ import {
   findCampaignByPublicId,
   findMembershipTask,
   findParticipation,
+  incrementParticipantCount,
   updateParticipationStatus,
 } from "@spark/db";
 import { verifyChannelMembership } from "@spark/telegram";
@@ -106,6 +107,7 @@ export function registerVerifyRoutes(app: FastifyInstance, deps: ApiDeps): void 
             participation.id,
           );
           rewardsAuthorized = rewards.length;
+          await incrementParticipantCount(deps.db, campaign.id);
         }
 
         return reply.send({

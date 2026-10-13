@@ -73,6 +73,8 @@ describe("Phase 3 E2E", () => {
       campaignEngine: createCampaignEngine({ db: h.db }),
       referralEngine,
       rewardEngine,
+      botUsername: "sparkbot",
+      appName: "app",
     };
 
     // Create the app and login as creator

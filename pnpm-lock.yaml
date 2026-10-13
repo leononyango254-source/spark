@@ -165,6 +165,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      drizzle-orm:
+        specifier: 0.44.7
+        version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.2.0
@@ -190,6 +194,9 @@ importers:
       '@spark/arc':
         specifier: workspace:*
         version: link:../../packages/arc
+      '@spark/campaign':
+        specifier: workspace:*
+        version: link:../../packages/campaign
       '@spark/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -199,15 +206,21 @@ importers:
       '@spark/ledger':
         specifier: workspace:*
         version: link:../../packages/ledger
-      '@spark/rewards':
+      '@spark/referral':
         specifier: workspace:*
-        version: link:../../packages/rewards
+        version: link:../../packages/referral
+      '@spark/reward':
+        specifier: workspace:*
+        version: link:../../packages/reward
       '@spark/telegram':
         specifier: workspace:*
         version: link:../../packages/telegram
       '@spark/wallet':
         specifier: workspace:*
         version: link:../../packages/wallet
+      drizzle-orm:
+        specifier: 0.44.7
+        version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)
       fastify:
         specifier: ^5.2.0
         version: 5.12.5
@@ -322,9 +335,6 @@ importers:
       '@spark/reward':
         specifier: workspace:*
         version: link:../packages/reward
-      '@spark/rewards':
-        specifier: workspace:*
-        version: link:../packages/rewards
       '@spark/wallet':
         specifier: workspace:*
         version: link:../packages/wallet

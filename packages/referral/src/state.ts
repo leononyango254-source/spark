@@ -1,4 +1,10 @@
-export const REFERRAL_STATES = ["ATTRIBUTED", "QUALIFIED", "REWARD_PENDING", "PAID", "REJECTED"] as const;
+export const REFERRAL_STATES = [
+  "ATTRIBUTED",
+  "QUALIFIED",
+  "REWARD_PENDING",
+  "PAID",
+  "REJECTED",
+] as const;
 
 export type ReferralState = (typeof REFERRAL_STATES)[number];
 

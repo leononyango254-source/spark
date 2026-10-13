@@ -32,12 +32,16 @@ const testEnv: MessageEnv = {
   apiToken: "test-api-token",
 };
 
-vi.stubGlobal("fetch", vi.fn(async () =>
-  new Response(
-    JSON.stringify({ deepLink: "https://t.me/join?deep=refcode1" }),
-    { status: 200, headers: { "content-type": "application/json" } },
+vi.stubGlobal(
+  "fetch",
+  vi.fn(
+    async () =>
+      new Response(JSON.stringify({ deepLink: "https://t.me/join?deep=refcode1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
   ),
-));
+);
 
 describe("handleMessage", () => {
   it("ignores non-/start messages", async () => {

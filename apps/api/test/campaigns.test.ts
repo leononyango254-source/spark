@@ -23,6 +23,8 @@ function testDeps() {
     campaignEngine,
     referralEngine,
     rewardEngine,
+    botUsername: "sparkbot",
+    appName: "app",
   };
 }
 

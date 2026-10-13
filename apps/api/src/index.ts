@@ -1,11 +1,11 @@
+import { createCampaignEngine } from "@spark/campaign";
+import { createReferralEngine } from "@spark/referral";
+import { createRewardEngine } from "@spark/reward";
 import { TelegramBotClient } from "@spark/telegram";
 import { createMembershipCache } from "./cache/membershipCache";
 import { buildDb } from "./db";
 import { loadEnv } from "./env";
 import { buildServer } from "./server";
-import { createCampaignEngine } from "@spark/campaign";
-import { createReferralEngine } from "@spark/referral";
-import { createRewardEngine } from "@spark/reward";
 
 const env = loadEnv();
 if (!env.DATABASE_URL) {
@@ -25,6 +25,8 @@ const app = buildServer({
   campaignEngine: createCampaignEngine({ db }),
   referralEngine: createReferralEngine({ db }),
   rewardEngine: createRewardEngine({ db }),
+  botUsername: env.TELEGRAM_BOT_USERNAME ?? "sparkbot",
+  appName: env.TELEGRAM_APP_NAME ?? "app",
 });
 
 app

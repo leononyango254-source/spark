@@ -22,6 +22,8 @@ beforeAll(async () => {
     campaignEngine: createCampaignEngine({ db: h.db }),
     referralEngine: createReferralEngine({ db: h.db }),
     rewardEngine: createRewardEngine({ db: h.db }),
+    botUsername: "sparkbot",
+    appName: "app",
   };
 }, 120_000);
 

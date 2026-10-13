@@ -78,6 +78,8 @@ beforeAll(async () => {
     campaignEngine: createCampaignEngine({ db: h.db }),
     referralEngine,
     rewardEngine,
+    botUsername: "sparkbot",
+    appName: "app",
   };
 }, 120_000);
 

@@ -18,6 +18,8 @@ function testDeps(): Parameters<typeof buildServer>[0] {
     referralEngine: createReferralEngine({ db: {} as Db }),
     rewardEngine: createRewardEngine({ db: {} as Db }),
     campaignEngine: createCampaignEngine({ db: {} as Db }),
+    botUsername: "sparkbot",
+    appName: "app",
   };
 }
 

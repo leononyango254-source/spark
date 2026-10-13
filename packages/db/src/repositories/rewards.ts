@@ -54,7 +54,7 @@ export async function updateRewardStatus(
   id: string,
   status: RewardRow["status"],
   extra: Partial<
-    Pick<RewardRow, "transactionHash" | "submittedAt" | "confirmedAt" | "failedAt">
+    Pick<RewardRow, "transactionHash" | "submittedAt" | "confirmedAt" | "paidAt" | "failedAt">
   > = {},
 ): Promise<RewardRow> {
   const [row] = await db

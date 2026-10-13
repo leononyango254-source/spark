@@ -4,6 +4,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { extractToken, resolveSession } from "../auth/resolveSession";
 import type { ApiDeps } from "../server";
+import { eq } from "drizzle-orm";
+import { campaigns } from "@spark/db";
 
 const createCampaignBody = z.object({
   creatorId: z.string().min(1),
@@ -75,7 +77,7 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     const campaign = await findCampaignByPublicId(deps.db, publicId);
     if (!campaign) return reply.code(404).send({ error: "not_found" });
 
-    const updated = await deps.campaignEngine!.fundCampaign(
+    const updated = await deps.campaignEngine?.fundCampaign(
       campaign.id,
       toBigInt(parsed.data.amountMicroUsdc),
     );
@@ -94,7 +96,7 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     const campaign = await findCampaignByPublicId(deps.db, publicId);
     if (!campaign) return reply.code(404).send({ error: "not_found" });
 
-    const activated = await deps.campaignEngine!.activateCampaign(campaign.id);
+    const activated = await deps.campaignEngine?.activateCampaign(campaign.id);
     return reply.send({ id: activated.id, status: activated.status });
   });
 
@@ -115,7 +117,16 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
         generate: () => Math.random().toString(36).substring(2, 10),
       });
 
-      return reply.send({ referralCode });
+      const link = deps.referralEngine.linkForReferrer({
+        campaignId: campaign.id,
+        referrerUserId: user.id,
+        publicId: campaign.publicId,
+        referralCode,
+        botUsername: deps.botUsername,
+        appName: deps.appName,
+      });
+
+      return reply.send(link);
     },
   );
 
@@ -130,7 +141,7 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     const campaign = await findCampaignByPublicId(deps.db, publicId);
     if (!campaign) return reply.code(404).send({ error: "not_found" });
 
-    const stats = await deps.campaignEngine!.getCampaignStats(campaign.id);
+    const stats = await deps.campaignEngine?.getCampaignStats(campaign.id);
     return reply.send(stats);
   });
 
@@ -141,7 +152,19 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
     const user = await resolveSession(deps.db, token);
     if (!user) return reply.code(401).send({ error: "unauthenticated" });
 
-    const firstCampaign = await deps.campaignEngine!.getCampaignStats("1");
-    return reply.send(firstCampaign);
+    // Return stats for all campaigns created by the user
+    const userCampaigns = await deps.db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.creatorId, user.id));
+    
+    const stats = await Promise.all(
+      userCampaigns.map(async (campaign) => {
+        const stats = await deps.campaignEngine?.getCampaignStats(campaign.id);
+        return { publicId: campaign.publicId, ...stats };
+      })
+    );
+    
+    return reply.send(stats);
   });
 }

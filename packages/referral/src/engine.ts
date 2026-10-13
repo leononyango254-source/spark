@@ -11,13 +11,21 @@ import { buildCampaignDeepLink } from "@spark/telegram";
 import { and, eq } from "drizzle-orm";
 import { ReferralError } from "./state";
 
+export interface ReferralLink {
+  startapp: string;
+  deepLink: string;
+  referralCode: string;
+}
+
 export interface ReferralEngine {
   linkForReferrer(input: {
     campaignId: string;
     referrerUserId: string;
     publicId: string;
     referralCode: string;
-  }): string;
+    botUsername: string;
+    appName: string;
+  }): ReferralLink;
   attribute(input: {
     campaignId: string;
     referrerUserId: string;
@@ -40,9 +48,15 @@ export function createReferralEngine(deps: { db: Db }): ReferralEngine {
     referrerUserId: string;
     publicId: string;
     referralCode: string;
-  }): string {
+    botUsername: string;
+    appName: string;
+  }): ReferralLink {
     const startapp = `c_${input.publicId}_${input.referralCode}`;
-    return buildCampaignDeepLink("sparkbot", "app", startapp);
+    return {
+      startapp,
+      deepLink: buildCampaignDeepLink(input.botUsername, input.appName, startapp),
+      referralCode: input.referralCode,
+    };
   }
 
   async function attribute(input: {

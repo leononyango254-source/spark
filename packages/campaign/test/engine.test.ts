@@ -1,4 +1,10 @@
-import { type Db, findCampaignById, findMembershipTask, updateCampaignStatus, upsertUserByTelegramId } from "@spark/db";
+import {
+  type Db,
+  findCampaignById,
+  findMembershipTask,
+  updateCampaignStatus,
+  upsertUserByTelegramId,
+} from "@spark/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Harness, startHarness } from "../../db/test/harness";
 import { createCampaignEngine } from "../src";
