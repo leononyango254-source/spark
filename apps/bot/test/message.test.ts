@@ -28,7 +28,20 @@ const testEnv: MessageEnv = {
   webappUrl: "https://web.example.com",
   appName: "appname",
   botUsername: "botname",
+  apiOrigin: "https://api.example.com",
+  apiToken: "test-api-token",
 };
+
+vi.stubGlobal(
+  "fetch",
+  vi.fn(
+    async () =>
+      new Response(JSON.stringify({ deepLink: "https://t.me/join?deep=refcode1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  ),
+);
 
 describe("handleMessage", () => {
   it("ignores non-/start messages", async () => {
@@ -115,5 +128,27 @@ describe("handleMessage", () => {
     const sendSpy = vi.spyOn(client, "sendMessage");
     await handleMessage(client, testEnv, makeUpdate("   "));
     expect(sendSpy).not.toHaveBeenCalled();
+  });
+
+  it("fetches referral link and sends it for /share", async () => {
+    const client = createFakeClient();
+    const sendSpy = vi.spyOn(client, "sendMessage");
+    const publicId = "publicid12345678";
+    const code = "refcode1";
+    await handleMessage(client, testEnv, makeUpdate(`/share ${publicId}_${code}`));
+    expect(sendSpy).toHaveBeenCalledOnce();
+    const calls = sendSpy.mock.calls;
+    expect(calls.length).toBe(1);
+    const call = calls[0];
+    if (call) {
+      const [chatId, text, opts] = call;
+      expect(chatId).toBe("42");
+      expect(text).toContain(`c_${publicId}_${code}`);
+      const keyboard = opts?.replyMarkup?.inlineKeyboard;
+      expect(keyboard).toBeDefined();
+      if (keyboard?.[0]?.[0]) {
+        expect(keyboard[0][0].text).toBe("Share");
+      }
+    }
   });
 });

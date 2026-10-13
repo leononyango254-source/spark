@@ -53,3 +53,50 @@ See `docs/spikes/` for evidence.
 - `apps/bot` long-polls `getUpdates` and answers `/start`, opening the Mini App (deep links with `startapp=c_<publicId>_<referralCode>`).
 - `POST /api/campaigns/:publicId/verify` checks the user's membership in the campaign channel via `getChatMember` (bot must be an admin of the target chat, PRD §15), cached in-memory for `MEMBERSHIP_CACHE_TTL_MS`.
 - `apps/telegram-mini-app` is a Vite static client; it posts raw `initData` to `/api/auth/telegram` and never trusts `initDataUnsafe`.
+
+## Campaign Engine (Phase 3)
+
+### Three engine packages
+
+| Package | Responsibility |
+|---------|----------------|
+| `@spark/campaign` | Campaign lifecycle: create (DRAFT), fund (FUNDING → FUNDED), activate (ACTIVE), pause/resume, close. Enforces state transitions and budget minimums. |
+| `@spark/referral` | Referral attribution and qualification. `getOrCreateReferralCode` issues stable 8-char codes; `attribute` (called on referred user login) creates a `referrals` row at `ATTRIBUTED`; `qualify` (called on successful verification) advances to `QUALIFIED`. |
+| `@spark/reward` | Reward authorization and settlement. `authorizeForParticipation` creates `USER_COMPLETION` reward (amount = `campaign.rewardMicroUsdc`) and, if a `QUALIFIED` referral exists, a `REFERRAL` reward (amount = `campaign.referralRewardMicroUsdc`). Both rewards get unique `authorizationNonce` and `authorizationExpiresAt` (7 days). Budget is atomically reserved via conditional `UPDATE campaigns SET balanceMicroUsdc = balanceMicroUsdc - total WHERE balanceMicroUsdc >= total`. |
+
+### Referral attribution lifecycle
+
+1. Creator calls `GET /api/campaigns/:publicId/referral-link` → receives stable `referralCode` (stored in `referralCodes`).
+2. Referred user logs in via `POST /api/auth/telegram { initData, campaignPublicId, referralCode }` → API resolves referrer via `referralCodes`, calls `referralEngine.attribute` → `referrals` row created with `status = ATTRIBUTED`.
+3. Referred user verifies membership via `POST /api/campaigns/:publicId/verify` → on success, `referralEngine.qualify` advances referral to `QUALIFIED`.
+
+### Reward state machine through `PAID`
+
+| Reward type | Trigger | States |
+|-------------|---------|--------|
+| `USER_COMPLETION` | `authorizeForParticipation` (participation `VERIFIED`) | `ELIGIBLE → AUTHORIZED → SUBMITTED → CONFIRMED → PAID` |
+| `REFERRAL` | Same, only if referral `QUALIFIED` | `ELIGIBLE → AUTHORIZED → SUBMITTED → CONFIRMED → PAID` |
+
+When a `REFERRAL` reward reaches `AUTHORIZED`, the referral row moves `QUALIFIED → REWARD_PENDING`. When it reaches `PAID`, the referral row moves `REWARD_PENDING → PAID`.
+
+### Atomic budget reservation
+
+`authorizeForParticipation` reserves the total payout (`rewardMicroUsdc + referralRewardMicroUsdc` if applicable) in a single conditional UPDATE:
+
+```sql
+UPDATE campaigns
+SET balanceMicroUsdc = balanceMicroUsdc - $total
+WHERE id = $campaignId AND balanceMicroUsdc >= $total
+```
+
+If the reservation fails (insufficient balance), no rewards are created.
+
+### Mock settlement boundary (Phase 4/5 will replace)
+
+Phase 3 uses `MockSettlement` (in `@spark/reward`):
+- `submitPayout` returns a deterministic fake `txHash` (SHA-256 of campaignId:rewardId:nonce).
+- `getPayoutStatus` immediately returns `confirmed`.
+
+The settlement worker (`worker/src/settlement`) drives each `AUTHORIZED` reward through `SUBMITTED → CONFIRMED → PAID`, appends an immutable `ledger_entries` row (`USER_REWARD` or `REFERRAL_REWARD`, direction −1, idempotency key `reward:<rewardId>`), and reduces campaign balance.
+
+Phase 4/5 will replace `MockSettlement` with a real `WalletProvider` implementation that submits `payReward` to the `CampaignEscrow` contract on Arc, waits for 1 confirmation, and reconciles on-chain events.

@@ -4,6 +4,8 @@ export const botEnvSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1),
   TELEGRAM_WEBAPP_URL: z.string().url(),
   TELEGRAM_APP_NAME: z.string().min(1),
+  API_ORIGIN: z.string().url().optional(),
+  BOT_API_TOKEN: z.string().optional(),
   API_BOT_POLL_TIMEOUT: z.coerce.number().int().positive().default(30),
 });
 

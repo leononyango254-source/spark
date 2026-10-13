@@ -1,3 +1,6 @@
+import { createCampaignEngine } from "@spark/campaign";
+import { createReferralEngine } from "@spark/referral";
+import { createRewardEngine } from "@spark/reward";
 import { signInitData, TelegramBotClient } from "@spark/telegram";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Harness, startHarness } from "../../../packages/db/test/harness";
@@ -16,6 +19,11 @@ beforeAll(async () => {
     membershipCache: createMembershipCache(300_000),
     sessionTtlSeconds: 3600,
     nodeEnv: "test",
+    campaignEngine: createCampaignEngine({ db: h.db }),
+    referralEngine: createReferralEngine({ db: h.db }),
+    rewardEngine: createRewardEngine({ db: h.db }),
+    botUsername: "sparkbot",
+    appName: "app",
   };
 }, 120_000);
 
@@ -80,6 +88,29 @@ describe("auth", () => {
     const app = buildServer(deps);
     const res = await app.inject({ method: "GET", url: "/api/me" });
     expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("attributes referral when campaignPublicId and referralCode provided", async () => {
+    const app = buildServer(deps);
+    const referralCode = "a1b2c3d4";
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/telegram",
+      payload: {
+        initData: freshInitData(Math.floor(Date.now() / 1000)),
+        campaignPublicId: "testcampaign1234",
+        referralCode,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const token = (res.json() as { token: string }).token;
+    const me = await app.inject({
+      method: "GET",
+      url: "/api/me",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(me.statusCode).toBe(200);
     await app.close();
   });
 });

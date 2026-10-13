@@ -33,7 +33,15 @@ export const rewardStatus = pgEnum("reward_status", [
   "FAILED",
 ]);
 
-export const referralStatus = pgEnum("referral_status", ["PENDING", "REWARDED", "REJECTED"]);
+export const referralStatus = pgEnum("referral_status", [
+  "PENDING",
+  "REWARDED",
+  "REJECTED",
+  "ATTRIBUTED",
+  "QUALIFIED",
+  "REWARD_PENDING",
+  "PAID",
+]);
 
 export const ledgerEntryType = pgEnum("ledger_entry_type", [
   "CAMPAIGN_FUNDING",

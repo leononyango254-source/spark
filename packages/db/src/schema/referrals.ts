@@ -18,7 +18,9 @@ export const referrals = pgTable(
       .notNull()
       .references(() => users.id),
     referralCode: text("referral_code").notNull(),
-    status: referralStatus("status").notNull().default("PENDING"),
+    status: referralStatus("status").notNull(),
+    qualifiedAt: timestamp("qualified_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

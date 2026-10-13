@@ -21,6 +21,8 @@ export const campaigns = pgTable(
     balanceMicroUsdc: bigint("balance_micro_usdc", { mode: "bigint" }).notNull(),
     targetChatId: bigint("target_chat_id", { mode: "bigint" }),
     targetChatUsername: text("target_chat_username"),
+    maxParticipants: integer("max_participants"),
+    participantCount: integer("participant_count").notNull().default(0),
     deadline: timestamp("deadline", { withTimezone: true }),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
@@ -35,6 +37,11 @@ export const campaigns = pgTable(
     check("campaigns_budget_positive", sql`${t.budgetMicroUsdc} > 0`),
     check("campaigns_balance_non_negative", sql`${t.balanceMicroUsdc} >= 0`),
     check("campaigns_reward_within_budget", sql`${t.rewardMicroUsdc} <= ${t.budgetMicroUsdc}`),
+    check("campaigns_participant_count_non_negative", sql`${t.participantCount} >= 0`),
+    check(
+      "campaigns_participant_count_within_max",
+      sql`${t.maxParticipants} IS NULL OR ${t.participantCount} <= ${t.maxParticipants}`,
+    ),
   ],
 );
 

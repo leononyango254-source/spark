@@ -5,13 +5,14 @@
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./settlement": "./src/settlement/index.ts"
   },
   "dependencies": {
     "@spark/arc": "workspace:*",
     "@spark/db": "workspace:*",
     "@spark/ledger": "workspace:*",
-    "@spark/rewards": "workspace:*",
+    "@spark/reward": "workspace:*",
     "@spark/wallet": "workspace:*",
     "pg-boss": "^10.1.0"
   },

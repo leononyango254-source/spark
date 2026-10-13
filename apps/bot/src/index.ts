@@ -13,6 +13,8 @@ async function main(): Promise<void> {
     webappUrl: env.TELEGRAM_WEBAPP_URL,
     appName: env.TELEGRAM_APP_NAME,
     botUsername: me.username,
+    apiOrigin: env.API_ORIGIN ?? "",
+    apiToken: env.BOT_API_TOKEN ?? "",
   };
 
   const controller = new AbortController();

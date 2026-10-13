@@ -1,0 +1,1 @@
+ALTER TABLE "rewards" ADD COLUMN "paid_at" timestamp with time zone;
