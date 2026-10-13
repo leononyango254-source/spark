@@ -20,6 +20,21 @@ export async function findCampaignById(db: Db, id: string): Promise<CampaignRow 
   return row ?? null;
 }
 
+export async function findCampaignByOnChainId(
+  db: Db,
+  chainId: number,
+  onChainCampaignId: bigint,
+): Promise<CampaignRow | null> {
+  const [row] = await db
+    .select()
+    .from(campaigns)
+    .where(
+      and(eq(campaigns.chainId, chainId), eq(campaigns.onChainCampaignId, onChainCampaignId)),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
 export async function listCampaignsByCreator(db: Db, creatorId: string): Promise<CampaignRow[]> {
   return db.select().from(campaigns).where(eq(campaigns.creatorId, creatorId));
 }
@@ -60,6 +75,20 @@ export async function setCampaignFunded(
     .update(campaigns)
     .set({ balanceMicroUsdc: amountMicroUsdc, status: "FUNDED", updatedAt: new Date() })
     .where(eq(campaigns.id, id))
+    .returning();
+  return row!;
+}
+
+export async function setCampaignOnChainId(
+  db: Db,
+  campaignId: string,
+  onChainCampaignId: bigint,
+  escrowAddress: string,
+): Promise<CampaignRow> {
+  const [row] = await db
+    .update(campaigns)
+    .set({ onChainCampaignId, escrowAddress, updatedAt: new Date() })
+    .where(eq(campaigns.id, campaignId))
     .returning();
   return row!;
 }
