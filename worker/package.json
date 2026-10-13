@@ -15,11 +15,13 @@
     "@spark/reward": "workspace:*",
     "@spark/wallet": "workspace:*",
     "pg-boss": "^10.1.0",
-    "viem": "^2.21.0"
+    "viem": "^2.21.0",
+    "zod": "^3.22.4"
   },
   "scripts": {
-    "dev": "node --watch src/index.ts",
-    "start": "node src/index.ts",
+    "dev": "node --watch src/main.ts",
+    "start": "node src/main.ts",
+    "seed:campaign": "node src/scripts/seed-campaign.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   }
