@@ -4,12 +4,14 @@ import type { Db } from "@spark/db";
 import type { ReferralEngine } from "@spark/referral";
 import type { RewardEngine } from "@spark/reward";
 import type { TelegramBotApi } from "@spark/telegram";
+import type { WalletConnectSessionManager } from "@spark/wallet";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { MembershipCache } from "./cache/membershipCache";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerCampaignRoutes } from "./routes/campaigns";
 import { registerMeRoutes } from "./routes/me";
 import { registerVerifyRoutes } from "./routes/verify";
+import { registerWalletRoutes } from "./routes/wallet";
 
 export interface ApiDeps {
   db: Db;
@@ -22,6 +24,7 @@ export interface ApiDeps {
   nodeEnv: "development" | "test" | "production";
   botUsername: string;
   appName: string;
+  walletConnect?: WalletConnectSessionManager;
 }
 
 export function buildServer(deps: ApiDeps): FastifyInstance {
@@ -35,6 +38,7 @@ export function buildServer(deps: ApiDeps): FastifyInstance {
     registerMeRoutes(instance, deps);
     registerVerifyRoutes(instance, deps);
     registerCampaignRoutes(instance, deps);
+    registerWalletRoutes(instance, deps);
   });
 
   return app;
