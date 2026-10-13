@@ -5,8 +5,8 @@ import {Script, console} from "forge-std/Script.sol";
 import {CampaignEscrow} from "../src/CampaignEscrow.sol";
 
 contract Deploy is Script {
-    function run() external {
-        address usdc = vm.envAddress("ARC_USDC");
+    function run() external returns (address escrowAddr) {
+        address usdc = vm.envAddress("ARC_USDC_ADDRESS");
         uint256 maxPayout = vm.envUint("MAX_PAYOUT_MICRO_USDC");
         uint256 allowance = vm.envUint("GLOBAL_PAYOUT_ALLOWANCE");
 
@@ -14,7 +14,8 @@ contract Deploy is Script {
         CampaignEscrow escrow = new CampaignEscrow(usdc, maxPayout, allowance);
         vm.stopBroadcast();
 
-        console.log("CampaignEscrow deployed at:", address(escrow));
+        escrowAddr = address(escrow);
+        console.log("CampaignEscrow deployed at:", escrowAddr);
         console.log("usdc:", usdc);
         console.log("maxPayoutMicroUsdc:", maxPayout);
         console.log("globalPayoutAllowance:", allowance);
