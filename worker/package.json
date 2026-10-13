@@ -14,7 +14,8 @@
     "@spark/ledger": "workspace:*",
     "@spark/reward": "workspace:*",
     "@spark/wallet": "workspace:*",
-    "pg-boss": "^10.1.0"
+    "pg-boss": "^10.1.0",
+    "viem": "^2.21.0"
   },
   "scripts": {
     "dev": "node --watch src/index.ts",

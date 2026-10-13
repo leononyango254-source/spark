@@ -1,5 +1,5 @@
 import type { Db } from "@spark/db";
-import { appendLedgerEntry } from "@spark/db";
+import { appendLedgerEntry, findCampaignById } from "@spark/db";
 import { createMockSettlement, createRewardEngine, type SettlementPort } from "@spark/reward";
 
 export interface SettlementDeps {
@@ -16,12 +16,24 @@ export async function settleAuthorizedRewards(deps: SettlementDeps): Promise<num
 
   for (const reward of rewards) {
     try {
+      if (!reward.recipientWallet) {
+        await engine.markSubmissionFailed(reward.id);
+        continue;
+      }
+      const campaign = await findCampaignById(deps.db, reward.campaignId);
+      if (!campaign || !campaign.onChainCampaignId) {
+        await engine.markSubmissionFailed(reward.id);
+        continue;
+      }
       const { txHash } = await settlement.submitPayout({
         campaignId: reward.campaignId,
         rewardId: reward.id,
+        chainCampaignId: campaign.onChainCampaignId,
+        onChainRewardId: reward.onChainRewardId,
         nonce: reward.authorizationNonce,
         recipientWallet: reward.recipientWallet,
         amountMicroUsdc: reward.amountMicroUsdc,
+        deadline: BigInt(Math.floor(reward.authorizationExpiresAt.getTime() / 1000)),
       });
       await engine.markSubmitted(reward.id, txHash);
 

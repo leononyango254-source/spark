@@ -31,6 +31,7 @@ describe("settlement loop", () => {
       publicId: "settle0000000001",
       creatorId: u.id,
       chainId: 5042002,
+      onChainCampaignId: 1n,
       rewardMicroUsdc: 100_000n,
       referralRewardMicroUsdc: 0n,
       budgetMicroUsdc: 1_000_000n,
@@ -49,12 +50,14 @@ describe("settlement loop", () => {
     });
     await updateParticipationStatus(db, p.id, "VERIFIED", { verifiedAt: new Date() });
     await engine.authorizeForParticipation(campaign.id, p.id);
+    const reward = await findRewardByType(db, campaign.id, p.id, "USER_COMPLETION");
+    await engine.setRecipient(reward!.id, "0x00000000000000000000000000000000000000A1");
 
     expect(await settleAuthorizedRewards({ db, limit: 10 })).toBe(1);
 
-    const reward = await findRewardByType(db, campaign.id, p.id, "USER_COMPLETION");
-    expect(reward?.status).toBe("PAID");
-    expect(reward?.transactionHash).toMatch(/^0x[0-9a-f]{64}$/);
+    const updatedReward = await findRewardByType(db, campaign.id, p.id, "USER_COMPLETION");
+    expect(updatedReward?.status).toBe("PAID");
+    expect(updatedReward?.transactionHash).toMatch(/^0x[0-9a-f]{64}$/);
     expect((await findParticipationById(db, p.id))?.status).toBe("REWARD_PENDING");
   });
 });
