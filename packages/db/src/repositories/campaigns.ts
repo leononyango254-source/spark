@@ -28,9 +28,7 @@ export async function findCampaignByOnChainId(
   const [row] = await db
     .select()
     .from(campaigns)
-    .where(
-      and(eq(campaigns.chainId, chainId), eq(campaigns.onChainCampaignId, onChainCampaignId)),
-    )
+    .where(and(eq(campaigns.chainId, chainId), eq(campaigns.onChainCampaignId, onChainCampaignId)))
     .limit(1);
   return row ?? null;
 }

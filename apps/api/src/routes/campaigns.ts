@@ -157,14 +157,14 @@ export function registerCampaignRoutes(app: FastifyInstance, deps: ApiDeps): voi
       .select()
       .from(campaigns)
       .where(eq(campaigns.creatorId, user.id));
-    
+
     const stats = await Promise.all(
       userCampaigns.map(async (campaign) => {
         const stats = await deps.campaignEngine?.getCampaignStats(campaign.id);
         return { publicId: campaign.publicId, ...stats };
-      })
+      }),
     );
-    
+
     return reply.send(stats);
   });
 }

@@ -51,11 +51,7 @@ export async function runReconciliation(deps: ReconcileDeps): Promise<ReconcileS
   stats.scanned = logs.length;
 
   for (const log of logs) {
-    const campaign = await findCampaignByOnChainId(
-      deps.db,
-      deps.chainId,
-      log.campaignId,
-    );
+    const campaign = await findCampaignByOnChainId(deps.db, deps.chainId, log.campaignId);
     if (!campaign) continue;
 
     const inserted = await insertEvent(deps.db, {

@@ -105,6 +105,7 @@ async function bootstrap(): Promise<void> {
     const referral = state.launch
       ? { referralCode: state.launch.referralCode, campaignPublicId: state.launch.publicId }
       : undefined;
+    // biome-ignore lint/suspicious/noExplicitAny: optional referral object shape
     state.auth = await authenticate(apiOrigin, raw, referral as any);
   } catch (e) {
     state.authError = (e as Error).message;

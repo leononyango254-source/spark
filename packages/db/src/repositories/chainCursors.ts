@@ -2,11 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { chainCursors } from "../schema";
 
-export async function getCursor(
-  db: Db,
-  chainId: number,
-  contractAddress: string,
-): Promise<bigint> {
+export async function getCursor(db: Db, chainId: number, contractAddress: string): Promise<bigint> {
   const [row] = await db
     .select({ lastBlockNumber: chainCursors.lastBlockNumber })
     .from(chainCursors)

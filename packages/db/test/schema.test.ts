@@ -119,10 +119,10 @@ describe("schema constraints", () => {
     const insert = (nonce: number) =>
       h.pool.query(
         `INSERT INTO rewards
-           (campaign_id, reward_type, recipient_user_id, recipient_wallet, amount_micro_usdc,
+           (campaign_id, reward_type, recipient_user_id, recipient_wallet, on_chain_reward_id, amount_micro_usdc,
             authorization_nonce, authorization_expires_at, chain_id)
-         VALUES ($1, 'USER_COMPLETION', $2, '0xabc', 100000, $3, now() + interval '1 hour', 5042002)`,
-        [cid, uid, nonce],
+         VALUES ($1, 'USER_COMPLETION', $2, '0xabc', $3, 100000, $4, now() + interval '1 hour', 5042002)`,
+        [cid, uid, nonce, nonce],
       );
     await insert(90001);
     await expect(insert(90001)).rejects.toSatisfy((e) => pgErrorCode(e) === "23505");

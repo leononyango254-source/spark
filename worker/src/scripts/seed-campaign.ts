@@ -7,7 +7,14 @@ import {
   encodeFundCampaign,
 } from "@spark/arc";
 import { createDb, setCampaignOnChainId } from "@spark/db";
-import { createWalletClient, http, decodeEventLog, type Address, type Hex, defineChain } from "viem";
+import {
+  createWalletClient,
+  http,
+  decodeEventLog,
+  type Address,
+  type Hex,
+  defineChain,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { loadWorkerEnv } from "../env";
 

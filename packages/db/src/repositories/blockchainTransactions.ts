@@ -11,7 +11,8 @@ export async function createTransaction(
   input: NewBlockchainTransactionRow,
 ): Promise<BlockchainTransactionRow> {
   const [row] = await db.insert(blockchainTransactions).values(input).returning();
-  return row!;
+  if (!row) throw new Error("createTransaction: no row returned");
+  return row;
 }
 
 export async function findTransactionByHash(
@@ -54,7 +55,12 @@ export async function updateTransactionStatus(
   extra: Partial<
     Pick<
       BlockchainTransactionRow,
-      "blockNumber" | "errorCode" | "errorMessage" | "confirmedAt" | "failureReason" | "lastCheckedAt"
+      | "blockNumber"
+      | "errorCode"
+      | "errorMessage"
+      | "confirmedAt"
+      | "failureReason"
+      | "lastCheckedAt"
     >
   > = {},
 ): Promise<BlockchainTransactionRow> {
@@ -63,7 +69,8 @@ export async function updateTransactionStatus(
     .set({ status, ...extra })
     .where(eq(blockchainTransactions.txHash, txHash))
     .returning();
-  return row!;
+  if (!row) throw new Error("updateTransactionStatus: no row returned");
+  return row;
 }
 
 export async function incrementAttempts(db: Db, txHash: string): Promise<number> {

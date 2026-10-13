@@ -24,7 +24,10 @@ export async function findRewardById(db: Db, id: string): Promise<RewardRow | nu
   return row ?? null;
 }
 
-export async function findRewardByOnChainId(db: Db, onChainRewardId: bigint): Promise<RewardRow | null> {
+export async function findRewardByOnChainId(
+  db: Db,
+  onChainRewardId: bigint,
+): Promise<RewardRow | null> {
   const [row] = await db
     .select()
     .from(rewards)

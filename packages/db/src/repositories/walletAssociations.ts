@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { Db } from "../client";
-import { walletAssociations, type WalletAssociationRow } from "../schema";
+import { type WalletAssociationRow, walletAssociations } from "../schema";
 
 export async function findActiveWalletByCampaignAndUser(
   db: Db,
@@ -30,8 +30,13 @@ export async function upsertWalletAssociation(
     .values(input)
     .onConflictDoUpdate({
       target: [walletAssociations.campaignId, walletAssociations.userId],
-      set: { address: input.address, normalizedAddress: input.normalizedAddress, updatedAt: new Date() },
+      set: {
+        address: input.address,
+        normalizedAddress: input.normalizedAddress,
+        updatedAt: new Date(),
+      },
     })
     .returning();
-  return row!;
+  if (!row) throw new Error("upsertWalletAssociation: no row returned");
+  return row;
 }

@@ -88,7 +88,11 @@ describe("settlement loop", () => {
       rewardMicroUsdc: 100_000n,
       chatId: "-1007",
     });
-    const p = await createParticipation(db, { campaignId: campaign.id, userId: u.id, taskId: task.id });
+    const p = await createParticipation(db, {
+      campaignId: campaign.id,
+      userId: u.id,
+      taskId: task.id,
+    });
     await updateParticipationStatus(db, p.id, "VERIFIED", { verifiedAt: new Date() });
     await engine.authorizeForParticipation(campaign.id, p.id);
 

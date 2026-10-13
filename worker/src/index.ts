@@ -1,9 +1,6 @@
 import PgBoss from "pg-boss";
 import type { PublicClient } from "viem";
-import {
-  createArcPublicClient,
-  ARC_MIN_MAX_FEE_PER_GAS_WEI,
-} from "@spark/arc";
+import { createArcPublicClient, ARC_MIN_MAX_FEE_PER_GAS_WEI } from "@spark/arc";
 import type { Db } from "@spark/db";
 import { createViemWalletProvider, type Address } from "@spark/wallet";
 import { intervalToCron } from "./cron";
@@ -68,7 +65,10 @@ export async function start(
   return boss;
 }
 
-export function buildRuntime(env: WorkerEnv, db: Db): {
+export function buildRuntime(
+  env: WorkerEnv,
+  db: Db,
+): {
   deps: WorkerRuntimeDeps;
   intervals: { settleSeconds: number; reconcileSeconds: number };
 } {

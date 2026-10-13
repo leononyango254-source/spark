@@ -62,6 +62,7 @@ describe("Phase 3 E2E", () => {
       sendMessage: async () => {},
       getMe: async () => ({ id: 1, username: "test_bot" }),
       getUpdates: async () => [],
+      // biome-ignore lint/suspicious/noExplicitAny: test mock
     } as any;
 
     deps = {
@@ -203,7 +204,7 @@ describe("Phase 3 E2E", () => {
       [campaignId],
     );
     expect(rewardRows.rows.length).toBe(2);
-    const rewardTypes = rewardRows.rows.map((r: any) => r.reward_type).sort();
+    const rewardTypes = rewardRows.rows.map((r: { reward_type: string }) => r.reward_type).sort();
     expect(rewardTypes).toEqual(["REFERRAL", "USER_COMPLETION"]);
 
     // Check referral status is now QUALIFIED or REWARD_PENDING

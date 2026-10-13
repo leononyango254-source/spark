@@ -121,7 +121,11 @@ export function createArcPublicClient(rpcUrl: string, chainId: number): PublicCl
 }
 
 export function encodeApprove(spender: Address, amount: bigint): Hex {
-  return encodeFunctionData({ abi: usdcErc20Abi, functionName: "approve", args: [spender, amount] });
+  return encodeFunctionData({
+    abi: usdcErc20Abi,
+    functionName: "approve",
+    args: [spender, amount],
+  });
 }
 
 export function encodeCreateCampaign(creator: Address, budget: bigint, deadline: bigint): Hex {

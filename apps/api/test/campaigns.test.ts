@@ -8,6 +8,7 @@ import { buildServer } from "../src/server";
 
 function testDeps() {
   const env = loadEnv({} as NodeJS.ProcessEnv);
+  // biome-ignore lint/suspicious/noExplicitAny: test mock
   const db = {} as any;
   const campaignEngine = createCampaignEngine({ db });
   const referralEngine = createReferralEngine({ db });

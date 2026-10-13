@@ -71,6 +71,7 @@ beforeAll(async () => {
       sendMessage: async () => {},
       getMe: async () => ({ id: 1, username: "test_bot" }),
       getUpdates: async () => [],
+      // biome-ignore lint/suspicious/noExplicitAny: test mock
     } as any,
     membershipCache: createMembershipCache(300_000),
     sessionTtlSeconds: 3600,

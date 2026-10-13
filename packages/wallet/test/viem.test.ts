@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createWalletProviderFromClients } from "../src";
 
-function fakeClients(overrides: {
-  baseFeePerGas?: bigint;
-  receipt?: unknown;
-  nonce?: number;
-} = {}) {
+function fakeClients(
+  overrides: { baseFeePerGas?: bigint; receipt?: unknown; nonce?: number } = {},
+) {
   const sendTransaction = vi.fn(async () => `0x${"a".repeat(64)}` as const);
   const publicClient = {
     getTransactionCount: vi.fn(async () => overrides.nonce ?? 3),
@@ -30,7 +28,10 @@ describe("viem wallet provider", () => {
       walletClient: walletClient as any,
       minMaxFeePerGasWei: 20_000_000_000n,
     });
-    const result = await provider.sendTransaction({ to: "0x00000000000000000000000000000000000000B2", data: "0x" });
+    const result = await provider.sendTransaction({
+      to: "0x00000000000000000000000000000000000000B2",
+      data: "0x",
+    });
     expect(result.nonce).toBe(3);
     expect(sendTransaction).toHaveBeenCalledWith(
       expect.objectContaining({ maxFeePerGas: 20_000_000_000n }),
@@ -49,7 +50,10 @@ describe("viem wallet provider", () => {
       walletClient: walletClient as any,
       minMaxFeePerGasWei: 20_000_000_000n,
     });
-    await provider.sendTransaction({ to: "0x00000000000000000000000000000000000000B2", data: "0x" });
+    await provider.sendTransaction({
+      to: "0x00000000000000000000000000000000000000B2",
+      data: "0x",
+    });
     expect(sendTransaction).toHaveBeenCalledWith(
       expect.objectContaining({ maxFeePerGas: 100_000_000_000n }),
     );
