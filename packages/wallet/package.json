@@ -13,6 +13,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@walletconnect/sign-client": "^2.17.0",
+    "@walletconnect/types": "^2.26.0",
     "viem": "^2.21.0"
   }
 }

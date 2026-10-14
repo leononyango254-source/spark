@@ -1,7 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@spark/settlement": ["../../packages/settlement/src"]
+    }
   },
   "include": ["src", "test"]
 }

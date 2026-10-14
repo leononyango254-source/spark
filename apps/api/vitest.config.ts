@@ -8,6 +8,7 @@ export default defineConfig({
       "@spark/campaign": "/Users/leonokwatch/Spark/packages/campaign/src",
       "@spark/db": "/Users/leonokwatch/Spark/packages/db/src",
       "@spark/telegram": "/Users/leonokwatch/Spark/packages/telegram/src",
+      "@spark/settlement": "/Users/leonokwatch/Spark/packages/settlement/src",
     },
   },
 });
