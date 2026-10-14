@@ -34,7 +34,10 @@ DATABASE_URL="$DATABASE_URL_UNPOOLED" pnpm --filter @spark/db db:migrate
 ## 3. Telegram bot
 
 1. Create the bot with BotFather and copy the token → `TELEGRAM_BOT_TOKEN`.
-2. Generate a webhook secret:
+2. Set `TELEGRAM_BOT_USERNAME` to the bot's `@username` without the `@`
+   (this bot: `sparkjs_bot`). Referral deep links use
+   `t.me/<TELEGRAM_BOT_USERNAME>/<TELEGRAM_APP_NAME>?startapp=…`.
+3. Generate a webhook secret:
    ```bash
    openssl rand -hex 32
    ```
