@@ -29,14 +29,20 @@ export function loadSettlementConfig(env: Env): SettlementConfigResult {
     SETTLE_MAX_ATTEMPTS: env.SETTLE_MAX_ATTEMPTS,
   });
 
-  const missing: string[] = [];
+  let missing: string[] = [];
   if (!parsed.success) {
     for (const issue of parsed.error.issues) missing.push(issue.path.join("."));
   }
+  if (env.ARC_NETWORK === "mainnet") {
+    if (!env.ARC_RPC_URL) missing.push("ARC_RPC_URL");
+    if (!env.ARC_CHAIN_ID) missing.push("ARC_CHAIN_ID");
+  }
   const adminToken = env.ADMIN_TOKEN;
   if (!adminToken) missing.push("ADMIN_TOKEN");
-  if (!parsed.success || !adminToken) {
+  missing = [...new Set(missing)];
+  if (missing.length > 0 || !parsed.success) {
     return { status: "misconfigured", missing };
   }
+  if (!adminToken) throw new Error("adminToken required");
   return { status: "ready", config: { workerEnv: parsed.data, adminToken } };
 }

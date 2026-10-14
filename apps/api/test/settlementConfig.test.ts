@@ -33,3 +33,44 @@ describe("loadSettlementConfig", () => {
     }
   });
 });
+
+  it("is disabled when SETTLEMENT_ENABLED is explicitly 'false'", () => {
+    const env = loadEnv({ ...base, SETTLEMENT_ENABLED: "false" });
+    expect(loadSettlementConfig(env).status).toBe("disabled");
+  });
+
+  it("flags a present-but-invalid value", () => {
+    const env = loadEnv({ ...base, SETTLEMENT_ENABLED: "true", ESCROW_ADDRESS: "0xnope" });
+    const result = loadSettlementConfig(env);
+    expect(result.status).toBe("misconfigured");
+    if (result.status === "misconfigured") expect(result.missing).toContain("ESCROW_ADDRESS");
+  });
+
+  it("flags a missing ADMIN_TOKEN", () => {
+    const env = loadEnv({ ...base, SETTLEMENT_ENABLED: "true", ADMIN_TOKEN: undefined });
+    const result = loadSettlementConfig(env);
+    expect(result.status).toBe("misconfigured");
+    if (result.status === "misconfigured") expect(result.missing).toContain("ADMIN_TOKEN");
+  });
+
+  it("does not throw on empty/malformed optional vars while disabled", () => {
+    const env = loadEnv({
+      ...base,
+      SETTLEMENT_ENABLED: "false",
+      ADMIN_TOKEN: "",
+      ARC_RPC_URL: "",
+      ARC_CHAIN_ID: "abc",
+      SETTLE_INTERVAL_SECONDS: "",
+    });
+    expect(loadSettlementConfig(env).status).toBe("disabled");
+  });
+
+  it("requires explicit RPC/chain when ARC_NETWORK is mainnet", () => {
+    const env = loadEnv({ ...base, SETTLEMENT_ENABLED: "true", ARC_NETWORK: "mainnet" });
+    const result = loadSettlementConfig(env);
+    expect(result.status).toBe("misconfigured");
+    if (result.status === "misconfigured") {
+      expect(result.missing).toContain("ARC_RPC_URL");
+      expect(result.missing).toContain("ARC_CHAIN_ID");
+    }
+  });

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const emptyToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   API_PORT: z.coerce.number().int().positive().default(3000),
@@ -22,16 +24,16 @@ export const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
-  ADMIN_TOKEN: z.string().min(1).optional(),
-  ARC_RPC_URL: z.string().url().optional(),
-  ARC_CHAIN_ID: z.coerce.number().int().positive().optional(),
-  ARC_USDC_ADDRESS: z.string().optional(),
-  ESCROW_ADDRESS: z.string().optional(),
-  OPERATOR_PRIVATE_KEY: z.string().optional(),
-  SETTLE_BATCH_LIMIT: z.coerce.number().int().positive().optional(),
-  SETTLE_INTERVAL_SECONDS: z.coerce.number().int().positive().optional(),
-  RECONCILE_INTERVAL_SECONDS: z.coerce.number().int().positive().optional(),
-  SETTLE_MAX_ATTEMPTS: z.coerce.number().int().positive().optional(),
+  ADMIN_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
+  ARC_RPC_URL: z.preprocess(emptyToUndefined, z.string().optional()),
+  ARC_CHAIN_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+  ARC_USDC_ADDRESS: z.preprocess(emptyToUndefined, z.string().optional()),
+  ESCROW_ADDRESS: z.preprocess(emptyToUndefined, z.string().optional()),
+  OPERATOR_PRIVATE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+  SETTLE_BATCH_LIMIT: z.preprocess(emptyToUndefined, z.string().optional()),
+  SETTLE_INTERVAL_SECONDS: z.preprocess(emptyToUndefined, z.string().optional()),
+  RECONCILE_INTERVAL_SECONDS: z.preprocess(emptyToUndefined, z.string().optional()),
+  SETTLE_MAX_ATTEMPTS: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;
