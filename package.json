@@ -12,7 +12,9 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "build": "pnpm -r --if-present run build",
+    "build": "pnpm build:js && pnpm build:mini",
+    "build:js": "node esbuild.config.mjs",
+    "build:mini": "pnpm --filter @spark/telegram-mini-app build",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @spark/db db:generate",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
     "@types/node": "^22.10.0",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.2",
     "vitest": "^3.0.0"

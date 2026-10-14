@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import cookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
 import type { CampaignEngine } from "@spark/campaign";
@@ -56,7 +57,7 @@ export function buildServer(deps: ApiDeps): FastifyInstance {
   app.get("/health", async () => ({ status: "ok", service: "spark-api" }));
 
   if (deps.webDistDir) {
-    app.register(fastifyStatic, { root: deps.webDistDir, prefix: "/" });
+    app.register(fastifyStatic, { root: resolve(deps.webDistDir), prefix: "/" });
     app.setNotFoundHandler((request, reply) => {
       if (request.raw.url?.startsWith("/api/")) {
         return reply.code(404).send({ error: "not_found" });
