@@ -10,6 +10,7 @@
   "dependencies": {
     "@fastify/cookie": "^11.1.3",
     "@spark/arc": "workspace:*",
+    "@spark/bot": "workspace:*",
     "@spark/campaign": "workspace:*",
     "@spark/db": "workspace:*",
     "@spark/domain": "workspace:*",

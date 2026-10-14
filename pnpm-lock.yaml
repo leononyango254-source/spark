@@ -194,6 +194,9 @@ importers:
       '@spark/arc':
         specifier: workspace:*
         version: link:../../packages/arc
+      '@spark/bot':
+        specifier: workspace:*
+        version: link:../bot
       '@spark/campaign':
         specifier: workspace:*
         version: link:../../packages/campaign

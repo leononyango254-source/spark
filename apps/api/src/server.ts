@@ -29,6 +29,7 @@ import { registerMeRoutes } from "./routes/me";
 import { registerVerifyRoutes } from "./routes/verify";
 import { registerWalletRoutes } from "./routes/wallet";
 import { registerSettlementRoutes } from "./routes/settlement";
+import { registerTelegramWebhookRoutes } from "./routes/telegram";
 
 export interface ApiDeps {
   db: Db;
@@ -43,6 +44,7 @@ export interface ApiDeps {
   appName: string;
   walletConnect?: WalletConnectSessionManager;
   settlement?: SettlementService;
+  telegramWebhook?: { secret: string; webappUrl: string };
 }
 
 export function buildServer(deps: ApiDeps): FastifyInstance {
@@ -57,6 +59,7 @@ export function buildServer(deps: ApiDeps): FastifyInstance {
     registerVerifyRoutes(instance, deps);
     registerCampaignRoutes(instance, deps);
     registerWalletRoutes(instance, deps);
+    registerTelegramWebhookRoutes(instance, deps);
 
     const walletConnect = deps.walletConnect;
     const settlement = deps.settlement;
