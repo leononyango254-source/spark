@@ -219,7 +219,7 @@ Expected: `runtime.test.ts` passes; `worker.test.ts`, `settlement.test.ts`, `set
 Run: `pnpm --filter @spark/worker typecheck`
 Expected: exit 0. If `main.ts` referenced `buildRuntime` from `.` it still resolves via the re-export above (main.ts already imports from `./index`).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add worker/src/runtime.ts worker/src/index.ts worker/package.json worker/test/runtime.test.ts
