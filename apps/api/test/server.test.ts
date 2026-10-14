@@ -53,3 +53,21 @@ describe("api", () => {
     expect(env.WEB_DIST_DIR).toBe("apps/telegram-mini-app/dist");
   });
 });
+
+describe("admin route", () => {
+  it("registers the admin settle route when a runner is provided", async () => {
+    const app = buildServer({
+      ...testDeps(),
+      admin: { runner: { runOnce: async () => ({ submitted: 0 }) }, adminToken: "secret" },
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/settle",
+      headers: { "x-admin-token": "secret" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().stats).toEqual({ submitted: 0 });
+    await app.close();
+  });
+});
+

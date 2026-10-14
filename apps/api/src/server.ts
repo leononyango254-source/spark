@@ -32,6 +32,7 @@ import { registerVerifyRoutes } from "./routes/verify";
 import { registerWalletRoutes } from "./routes/wallet";
 import { registerSettlementRoutes } from "./routes/settlement";
 import { registerTelegramWebhookRoutes } from "./routes/telegram";
+import { registerAdminRoutes } from "./routes/admin";
 
 export interface ApiDeps {
   db: Db;
@@ -48,6 +49,7 @@ export interface ApiDeps {
   settlement?: SettlementService;
   telegramWebhook?: { secret: string; webappUrl: string };
   webDistDir?: string;
+  admin?: { runner: { runOnce: () => Promise<unknown> }; adminToken: string };
 }
 
 export function buildServer(deps: ApiDeps): FastifyInstance {
@@ -73,6 +75,10 @@ export function buildServer(deps: ApiDeps): FastifyInstance {
     registerCampaignRoutes(instance, deps);
     registerWalletRoutes(instance, deps);
     registerTelegramWebhookRoutes(instance, deps);
+
+    if (deps.admin) {
+      registerAdminRoutes(instance, deps.admin);
+    }
 
     const walletConnect = deps.walletConnect;
     const settlement = deps.settlement;
