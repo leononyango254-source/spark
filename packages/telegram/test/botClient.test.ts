@@ -36,6 +36,40 @@ describe("TelegramBotClient", () => {
     await expect(client.getChatMember(1n, 2n)).rejects.toMatchObject({ code: 400 });
   });
 
+  it("setWebhook posts the url and secret token", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse({ ok: true, result: true }));
+    const client = new TelegramBotClient({ botToken: TOKEN, fetchImpl: fetchMock });
+    await client.setWebhook({
+      url: "https://x.test/api/telegram/webhook",
+      secretToken: "s3cr3t",
+    });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url).endsWith("/setWebhook")).toBe(true);
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      url: "https://x.test/api/telegram/webhook",
+      secret_token: "s3cr3t",
+    });
+  });
+
+  it("setChatMenuButton points at the Mini App", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse({ ok: true, result: true }));
+    const client = new TelegramBotClient({ botToken: TOKEN, fetchImpl: fetchMock });
+    await client.setChatMenuButton({ webAppUrl: "https://x.test" });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url).endsWith("/setChatMenuButton")).toBe(true);
+    const body = JSON.parse(String(init?.body));
+    expect(body.menu_button.type).toBe("web_app");
+    expect(body.menu_button.web_app.url).toBe("https://x.test");
+  });
+
+  it("does not leak the token in network errors", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      throw new Error(`request to https://api.telegram.org/bot${TOKEN}/getMe failed`);
+    });
+    const client = new TelegramBotClient({ botToken: TOKEN, fetchImpl: fetchMock });
+    await expect(client.getMe()).rejects.not.toThrow(TOKEN);
+  });
+
   it("exposes botToken and sends messages with an inline keyboard", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse({ ok: true, result: true }));
     const client = new TelegramBotClient({ botToken: TOKEN, fetchImpl: fetchMock });

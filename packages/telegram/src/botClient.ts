@@ -24,6 +24,9 @@ export interface TelegramBotApi {
   ): Promise<void>;
   getMe(): Promise<{ id: number; username: string }>;
   getUpdates(opts: { offset: number; timeout: number }): Promise<TelegramUpdate[]>;
+  setWebhook(opts: { url: string; secretToken: string }): Promise<void>;
+  deleteWebhook(): Promise<void>;
+  setChatMenuButton(opts: { webAppUrl: string; text?: string }): Promise<void>;
 }
 
 export interface TelegramBotClientOptions {
@@ -56,11 +59,16 @@ export class TelegramBotClient implements TelegramBotApi {
   }
 
   async #call<T>(method: string, payload: Record<string, unknown>): Promise<T> {
-    const res = await this.#fetch(this.#url(method), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    let res: Response;
+    try {
+      res = await this.#fetch(this.#url(method), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      throw new TelegramApiError(0, `network error calling ${method}`);
+    }
     if (!res.ok) {
       throw new TelegramApiError(res.status, `HTTP ${res.status}`);
     }
@@ -109,6 +117,28 @@ export class TelegramBotClient implements TelegramBotApi {
       timeout: opts.timeout,
       limit: 100,
       allowed_updates: ["message"],
+    });
+  }
+
+  async setWebhook(opts: { url: string; secretToken: string }): Promise<void> {
+    await this.#call("setWebhook", {
+      url: opts.url,
+      secret_token: opts.secretToken,
+      allowed_updates: ["message"],
+    });
+  }
+
+  async deleteWebhook(): Promise<void> {
+    await this.#call("deleteWebhook", {});
+  }
+
+  async setChatMenuButton(opts: { webAppUrl: string; text?: string }): Promise<void> {
+    await this.#call("setChatMenuButton", {
+      menu_button: {
+        type: "web_app",
+        text: opts.text ?? "Open Spark",
+        web_app: { url: opts.webAppUrl },
+      },
     });
   }
 }
