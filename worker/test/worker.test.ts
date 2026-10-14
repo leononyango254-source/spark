@@ -8,7 +8,7 @@ describe("worker", () => {
   });
 
   it("constructs a boss instance without connecting", () => {
-    const boss = createBoss("postgres://spark:spark@localhost:5432/spark");
+    const boss = createBoss("postgres://spark:spark@localhost:5433/spark");
     expect(boss).toBeDefined();
   });
 
