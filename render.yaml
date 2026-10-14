@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: spark-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: bash scripts/start-api.sh
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22.18.0"
+      - key: NODE_ENV
+        value: production
+      - key: WEB_DIST_DIR
+        value: apps/telegram-mini-app/dist
+      - key: TELEGRAM_APP_NAME
+        value: spark
+      - key: SESSION_TTL_SECONDS
+        value: "2592000"
+      - key: MEMBERSHIP_CACHE_TTL_MS
+        value: "300000"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBAPP_URL
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
