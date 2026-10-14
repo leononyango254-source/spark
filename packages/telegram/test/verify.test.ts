@@ -33,6 +33,18 @@ class FakeTelegram implements TelegramBotApi {
   getUpdates(): Promise<never[]> {
     return Promise.resolve([]);
   }
+
+  setWebhook(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  deleteWebhook(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  setChatMenuButton(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 describe("verifyChannelMembership", () => {
