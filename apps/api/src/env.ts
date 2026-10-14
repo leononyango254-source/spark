@@ -15,6 +15,9 @@ export const envSchema = z.object({
   WALLETCONNECT_RELAY_URL: z.string().optional(),
   SETTLEMENT_PROJECT_ID: z.string().optional().default(""),
   SETTLEMENT_RELAY_URL: z.string().optional().default(""),
+  TELEGRAM_WEBAPP_URL: z.string().url().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+  WEB_DIST_DIR: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

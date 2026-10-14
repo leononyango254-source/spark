@@ -41,4 +41,15 @@ describe("api", () => {
     expect(env.ARC_NETWORK).toBe("testnet");
     expect(env.SESSION_TTL_SECONDS).toBe(2_592_000);
   });
+
+  it("parses telegram + web dist env", () => {
+    const env = loadEnv({
+      TELEGRAM_WEBAPP_URL: "https://x.test",
+      TELEGRAM_WEBHOOK_SECRET: "s3cr3t",
+      WEB_DIST_DIR: "apps/telegram-mini-app/dist",
+    } as NodeJS.ProcessEnv);
+    expect(env.TELEGRAM_WEBAPP_URL).toBe("https://x.test");
+    expect(env.TELEGRAM_WEBHOOK_SECRET).toBe("s3cr3t");
+    expect(env.WEB_DIST_DIR).toBe("apps/telegram-mini-app/dist");
+  });
 });
