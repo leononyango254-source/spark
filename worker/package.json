@@ -23,6 +23,7 @@
     "dev": "node --watch src/main.ts",
     "start": "node src/main.ts",
     "seed:campaign": "node src/scripts/seed-campaign.ts",
+    "associate:wallet": "node src/scripts/associate-wallet.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   }
