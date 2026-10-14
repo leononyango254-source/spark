@@ -1,4 +1,5 @@
 import cookie from "@fastify/cookie";
+import fastifyStatic from "@fastify/static";
 import type { CampaignEngine } from "@spark/campaign";
 import type { Db } from "@spark/db";
 import type { ReferralEngine } from "@spark/referral";
@@ -45,6 +46,7 @@ export interface ApiDeps {
   walletConnect?: WalletConnectSessionManager;
   settlement?: SettlementService;
   telegramWebhook?: { secret: string; webappUrl: string };
+  webDistDir?: string;
 }
 
 export function buildServer(deps: ApiDeps): FastifyInstance {
@@ -52,6 +54,16 @@ export function buildServer(deps: ApiDeps): FastifyInstance {
   app.register(cookie);
 
   app.get("/health", async () => ({ status: "ok", service: "spark-api" }));
+
+  if (deps.webDistDir) {
+    app.register(fastifyStatic, { root: deps.webDistDir, prefix: "/" });
+    app.setNotFoundHandler((request, reply) => {
+      if (request.raw.url?.startsWith("/api/")) {
+        return reply.code(404).send({ error: "not_found" });
+      }
+      return reply.sendFile("index.html");
+    });
+  }
 
   app.register(async (instance) => {
     registerAuthRoutes(instance, deps);

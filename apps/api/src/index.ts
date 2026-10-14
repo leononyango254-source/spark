@@ -58,6 +58,17 @@ if (walletConnect !== undefined) {
   deps.settlement = settlement;
 }
 
+if (env.WEB_DIST_DIR) {
+  deps.webDistDir = env.WEB_DIST_DIR;
+}
+
+if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_WEBHOOK_SECRET && env.TELEGRAM_WEBAPP_URL) {
+  deps.telegramWebhook = {
+    secret: env.TELEGRAM_WEBHOOK_SECRET,
+    webappUrl: env.TELEGRAM_WEBAPP_URL,
+  };
+}
+
 const app = buildServer(deps);
 
 app
