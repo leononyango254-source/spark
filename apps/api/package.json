@@ -21,6 +21,7 @@
     "@spark/settlement": "workspace:*",
     "@spark/telegram": "workspace:*",
     "@spark/wallet": "workspace:*",
+    "@spark/worker": "workspace:*",
     "drizzle-orm": "0.44.7",
     "fastify": "^5.2.0",
     "pg": "^8.23.1",

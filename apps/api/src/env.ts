@@ -18,6 +18,20 @@ export const envSchema = z.object({
   TELEGRAM_WEBAPP_URL: z.string().url().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
   WEB_DIST_DIR: z.string().optional(),
+  SETTLEMENT_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  ADMIN_TOKEN: z.string().min(1).optional(),
+  ARC_RPC_URL: z.string().url().optional(),
+  ARC_CHAIN_ID: z.coerce.number().int().positive().optional(),
+  ARC_USDC_ADDRESS: z.string().optional(),
+  ESCROW_ADDRESS: z.string().optional(),
+  OPERATOR_PRIVATE_KEY: z.string().optional(),
+  SETTLE_BATCH_LIMIT: z.coerce.number().int().positive().optional(),
+  SETTLE_INTERVAL_SECONDS: z.coerce.number().int().positive().optional(),
+  RECONCILE_INTERVAL_SECONDS: z.coerce.number().int().positive().optional(),
+  SETTLE_MAX_ATTEMPTS: z.coerce.number().int().positive().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
