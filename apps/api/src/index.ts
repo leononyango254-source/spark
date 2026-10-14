@@ -3,10 +3,13 @@ import { createReferralEngine } from "@spark/referral";
 import { createRewardEngine } from "@spark/reward";
 import { TelegramBotClient } from "@spark/telegram";
 import { type WalletConnectConfig, WalletConnectSessionManager } from "@spark/wallet";
+import { buildRuntime, runReconciliation, runSettlementCycle } from "@spark/worker/runtime";
 import { createMembershipCache } from "./cache/membershipCache";
 import { buildDb } from "./db";
 import { loadEnv } from "./env";
 import { buildServer, type SettlementService } from "./server";
+import { loadSettlementConfig } from "./settlement/config";
+import { createSettlementRunner } from "./settlement/runner";
 
 const env = loadEnv();
 if (!env.DATABASE_URL) {
@@ -52,6 +55,37 @@ const deps: Parameters<typeof buildServer>[0] = {
   appName: env.TELEGRAM_APP_NAME ?? "app",
   settlement,
 };
+
+const settlementConfig = loadSettlementConfig(env);
+if (settlementConfig.status === "misconfigured") {
+  console.warn(
+    `settlement: SETTLEMENT_ENABLED=true but missing/invalid config: ${settlementConfig.missing.join(", ")}`,
+  );
+}
+if (settlementConfig.status === "ready") {
+  const { deps: runtime, intervals } = buildRuntime(settlementConfig.config.workerEnv, db);
+  const runner = createSettlementRunner({
+    settle: () =>
+      runSettlementCycle({
+        db,
+        settlement: runtime.settlement,
+        limit: runtime.batchLimit,
+        maxAttempts: runtime.maxAttempts,
+      }),
+    reconcile: () =>
+      runReconciliation({
+        db,
+        publicClient: runtime.publicClient,
+        escrowAddress: runtime.escrowAddress,
+        chainId: runtime.chainId,
+      }),
+    settleIntervalMs: intervals.settleSeconds * 1000,
+    reconcileIntervalMs: intervals.reconcileSeconds * 1000,
+    logger: (event, meta) => console.warn(`settlement: ${event}`, meta ?? {}),
+  });
+  runner.start();
+  deps.admin = { runner, adminToken: settlementConfig.config.adminToken };
+}
 
 if (walletConnect !== undefined) {
   deps.walletConnect = walletConnect;
