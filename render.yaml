@@ -3,8 +3,8 @@ services:
     name: spark-api
     runtime: node
     plan: free
-    region: oregon
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    region: ohio
+    buildCommand: npm install -g pnpm@12.8.1 && pnpm install --frozen-lockfile && pnpm build
     startCommand: bash scripts/start-api.sh
     healthCheckPath: /health
     envVars:

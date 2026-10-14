@@ -13,6 +13,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@spark/db": "workspace:*",
+    "@spark/telegram": "workspace:*",
     "drizzle-orm": "^0.44.0"
   }
 }
