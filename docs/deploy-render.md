@@ -12,11 +12,24 @@ hosted on Neon. The bot runs in webhook mode inside the same service.
 
 ## 2. Neon Postgres
 
-1. Create a Neon project (Postgres 16+).
-2. Copy **two** connection strings:
-   - **Pooled** (has `-pooler` in the host) → `DATABASE_URL` (app runtime).
-   - **Direct** (no `-pooler`) → `DATABASE_DIRECT_URL` (migrations).
-3. Both must end with `?sslmode=require`.
+This repo is already linked to a Neon project (`dark-frog-20086793`, branch
+`production`) via `.neon`, using the `agent` CLI profile. To recreate from scratch:
+
+```bash
+npm i -g neon@latest
+neon link --org-id <org-id> --project-id <project-id> --branch production
+```
+
+`neon link` writes two connection strings into `.env` (both `sslmode=require`):
+
+- **`DATABASE_URL`** — pooled (host contains `-pooler`); the app's runtime traffic.
+- `DATABASE_URL_UNPOOLED` — direct; used only for migrations/dumps.
+
+Then apply the schema to the linked branch with the direct URL:
+
+```bash
+DATABASE_URL="$DATABASE_URL_UNPOOLED" pnpm --filter @spark/db db:migrate
+```
 
 ## 3. Telegram bot
 
@@ -30,13 +43,13 @@ hosted on Neon. The bot runs in webhook mode inside the same service.
 ## 4. Render service
 
 1. **New → Blueprint**, connect the repo, and apply `render.yaml`.
-2. Fill in the `sync: false` secrets: `DATABASE_URL`, `DATABASE_DIRECT_URL`,
+2. Fill in the `sync: false` secrets: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
    `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, and `TELEGRAM_WEBAPP_URL`.
    - Use the public URL Render assigns (`https://spark-api.onrender.com` or your
      custom domain) for `TELEGRAM_WEBAPP_URL`.
 3. Deploy. The build runs `pnpm install --frozen-lockfile && pnpm build`
    (esbuild API/bot bundles + Vite Mini App). Start runs `scripts/start-api.sh`
-   (migrations via `DATABASE_DIRECT_URL`, then `node apps/api/dist/index.js`).
+   (migrations via `DATABASE_URL_UNPOOLED`, then `node apps/api/dist/index.js`).
 
 ## 5. Register the webhook and menu button
 
@@ -70,8 +83,8 @@ Also open the bot in Telegram and launch the Mini App from the menu button.
 ## 7. Backup and restore
 
 ```bash
-pg_dump "$DATABASE_DIRECT_URL" > backup.sql
-psql "$DATABASE_DIRECT_URL" < backup.sql
+pg_dump "$DATABASE_URL_UNPOOLED" > backup.sql
+psql "$DATABASE_URL_UNPOOLED" < backup.sql
 ```
 
 ## 8. Troubleshooting

@@ -22,7 +22,7 @@ services:
         value: "300000"
       - key: DATABASE_URL
         sync: false
-      - key: DATABASE_DIRECT_URL
+      - key: DATABASE_URL_UNPOOLED
         sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false

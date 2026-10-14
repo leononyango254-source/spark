@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MIGRATE_URL="${DATABASE_DIRECT_URL:-$DATABASE_URL}"
+MIGRATE_URL="${DATABASE_DIRECT_URL:-${DATABASE_URL_UNPOOLED:-$DATABASE_URL}}"
 echo "[start] running migrations"
 DATABASE_URL="$MIGRATE_URL" pnpm --filter @spark/db db:migrate
 
