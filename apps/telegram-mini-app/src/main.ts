@@ -4,8 +4,7 @@ import { parseStartParam } from "./launch";
 import { walletConnectInit, walletPollStatus, walletDisconnect } from "./wallet";
 import { settlement } from "./settlement";
 
-const apiOrigin = import.meta.env.VITE_API_ORIGIN;
-if (!apiOrigin) throw new Error("VITE_API_ORIGIN not set");
+const apiOrigin = import.meta.env.VITE_API_ORIGIN ?? "";
 
 interface AppState {
   auth: AuthResponse | null;

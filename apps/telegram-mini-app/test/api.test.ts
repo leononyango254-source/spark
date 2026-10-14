@@ -23,6 +23,10 @@ describe("api", () => {
       const url = buildApiUrl("http://api.example.com/", "/api/auth/telegram");
       expect(url).toBe("http://api.example.com/api/auth/telegram");
     });
+
+    it("returns a relative path when origin is empty", () => {
+      expect(buildApiUrl("", "/api/auth/telegram")).toBe("/api/auth/telegram");
+    });
   });
 
   describe("authenticate", () => {
