@@ -680,7 +680,7 @@ Expected: both bundles exist.
 Boot check (uses the local Postgres from `docker-compose.yml`; start it first if needed):
 ```bash
 pnpm db:up
-DATABASE_URL="postgres://spark:spark@localhost:5432/spark" \
+DATABASE_URL="postgres://spark:spark@localhost:5433/spark" \
   WEB_DIST_DIR="apps/telegram-mini-app/dist" \
   API_PORT=3999 node apps/api/dist/index.js &
 sleep 2
@@ -932,7 +932,7 @@ WEB_DIST_DIR=apps/telegram-mini-app/dist \
   TELEGRAM_BOT_TOKEN=<test-bot-token> \
   TELEGRAM_WEBAPP_URL=http://localhost:3999 \
   TELEGRAM_WEBHOOK_SECRET=devsecret \
-  DATABASE_URL="postgres://spark:spark@localhost:5432/spark" \
+  DATABASE_URL="postgres://spark:spark@localhost:5433/spark" \
   API_PORT=3999 node apps/api/dist/index.js &
 ```
 

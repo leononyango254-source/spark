@@ -5,6 +5,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "postgres://spark:spark@localhost:5432/spark",
+    url: process.env.DATABASE_URL ?? "postgres://spark:spark@localhost:5433/spark",
   },
 });
