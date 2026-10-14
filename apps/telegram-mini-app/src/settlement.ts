@@ -1,11 +1,9 @@
-import type { ConnectState } from "./wallet";
-
 export interface SettlementState {
   status: "disconnected" | "connecting" | "connected" | "submitting" | "settled";
-  walletAddress?: string;
-  txHash?: string;
+  walletAddress?: string | undefined;
+  txHash?: string | undefined;
   settlementStatus: "pending" | "settled";
-  error?: string;
+  error?: string | undefined;
 }
 
 export class SettlementClient {

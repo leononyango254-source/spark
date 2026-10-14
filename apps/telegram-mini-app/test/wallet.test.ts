@@ -1,9 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
-import { walletConnect, walletConnectInit, walletPollStatus, walletDisconnect } from "../src/wallet";
+import { describe, expect, it } from "vitest";
+import {
+  walletConnect,
+  walletConnectInit,
+  walletPollStatus,
+  walletDisconnect,
+} from "../src/wallet";
 
 describe("wallet connect client", () => {
   it("initializes with projectId", () => {
-    const { getState } = walletConnectInit("test-project-id");
+    walletConnectInit("test-project-id");
     expect(walletConnect.getState().status).toBe("disconnected");
   });
 

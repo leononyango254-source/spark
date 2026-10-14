@@ -17,7 +17,7 @@ describe("settlement client", () => {
     global.fetch = vi.fn(async () => ({
       ok: true,
       json: async () => ({ status: "pending" }),
-    }));
+    })) as unknown as typeof fetch;
     const state = await settlement.pollStatus();
     expect(state.settlementStatus).toBe("pending");
   });

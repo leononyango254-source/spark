@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Db, UserRow } from "@spark/db";
 import type { WalletConnectSessionManager } from "@spark/wallet";
-import { buildServer } from "../src/server";
+import { buildServer, type SettlementService } from "../src/server";
 
 function fakeUser(overrides: Partial<UserRow> = {}): UserRow {
   return {
@@ -25,32 +25,49 @@ function fakeDb(user: UserRow | null): Db {
   return {
     select: vi.fn().mockReturnValue({
       from: vi.fn((_table: string) => ({
-        where: vi.fn((_condition: any) => ({
-          limit: vi.fn().mockResolvedValue(
-            user ? [{ id: "sess-1", userId: user.id, tokenHash: "hash", expiresAt: new Date(Date.now() + 3600000), revokedAt: null }] : []
-          ),
+        where: vi.fn((_condition: unknown) => ({
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              user
+                ? [
+                    {
+                      id: "sess-1",
+                      userId: user.id,
+                      tokenHash: "hash",
+                      expiresAt: new Date(Date.now() + 3600000),
+                      revokedAt: null,
+                    },
+                  ]
+                : [],
+            ),
         })),
       })),
     }),
   } as unknown as Db;
 }
 
-function fakeSettlementService() {
+function fakeSettlementService(): SettlementService {
   return {
-    getUserBalance: vi.fn(),
-    submitSettlement: vi.fn(async (_address, _amount, _chainId, _walletConnect) => ({
-      hash: "0x" + Math.random().toString(16).substring(2),
+    getUserBalance: vi.fn(async () => 0n),
+    submitSettlement: vi.fn(async () => ({
+      hash: `0x${Math.random().toString(16).slice(2)}` as `0x${string}`,
+      awaitReceipt: async () => {},
     })),
-    getSettlementStatus: vi.fn(async (txHash) => {
+    getSettlementStatus: vi.fn(async (txHash: string) => {
       if (txHash === "0xpending") {
-        return { status: "pending" };
+        return { status: "pending" as const };
       }
-      return { status: "settled", receipt: { transactionHash: txHash } };
+      return { status: "settled" as const, receipt: { transactionHash: txHash } };
     }),
   };
 }
 
-function buildTestServer(user: UserRow | null, walletConnect: WalletConnectSessionManager, settlement: any) {
+function buildTestServer(
+  user: UserRow | null,
+  walletConnect: WalletConnectSessionManager,
+  settlement: SettlementService,
+) {
   const db = fakeDb(user);
   return buildServer({
     db,
@@ -73,15 +90,20 @@ describe("settlement routes", () => {
     const wc = fakeSettlementService() as unknown as WalletConnectSessionManager;
     const settlement = fakeSettlementService();
     const app = buildTestServer(null, wc, settlement);
-    const res = await app.inject({ method: "POST", url: "/api/settlement/submit", payload: { address: "0x123", amount: "100", chainId: 1 } });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/settlement/submit",
+      payload: { address: "0x123", amount: "100", chainId: 1 },
+    });
     expect(res.statusCode).toBe(401);
   });
 
   it("submits a settlement transaction", async () => {
     const wc = fakeSettlementService() as unknown as WalletConnectSessionManager;
     const settlement = fakeSettlementService();
-    settlement.submitSettlement = vi.fn(async (_address, _amount, _chainId) => ({
-      hash: "0x" + Math.random().toString(16).substring(2),
+    settlement.submitSettlement = vi.fn(async () => ({
+      hash: `0x${Math.random().toString(16).slice(2)}` as `0x${string}`,
+      awaitReceipt: async () => {},
     }));
     const app = buildTestServer(fakeUser(), wc, settlement);
     const res = await app.inject({
@@ -99,11 +121,11 @@ describe("settlement routes", () => {
   it("returns pending status for unmined tx", async () => {
     const wc = fakeSettlementService() as unknown as WalletConnectSessionManager;
     const settlement = fakeSettlementService();
-    settlement.getSettlementStatus = vi.fn(async (txHash) => {
+    settlement.getSettlementStatus = vi.fn(async (txHash: string) => {
       if (txHash === "0xpending") {
-        return { status: "pending" };
+        return { status: "pending" as const };
       }
-      return { status: "settled", receipt: { transactionHash: txHash } };
+      return { status: "settled" as const, receipt: { transactionHash: txHash } };
     });
     const app = buildTestServer(fakeUser(), wc, settlement);
     const res = await app.inject({
@@ -118,9 +140,10 @@ describe("settlement routes", () => {
   it("returns settled status with receipt", async () => {
     const wc = fakeSettlementService() as unknown as WalletConnectSessionManager;
     const settlement = fakeSettlementService();
-    settlement.getSettlementStatus = vi.fn(async (txHash) => {
-      return { status: "settled", receipt: { transactionHash: txHash } };
-    });
+    settlement.getSettlementStatus = vi.fn(async (txHash: string) => ({
+      status: "settled" as const,
+      receipt: { transactionHash: txHash },
+    }));
     const app = buildTestServer(fakeUser(), wc, settlement);
     const res = await app.inject({
       method: "GET",

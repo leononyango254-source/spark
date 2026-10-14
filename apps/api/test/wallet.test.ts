@@ -25,10 +25,22 @@ function fakeDb(user: UserRow | null): Db {
   return {
     select: vi.fn().mockReturnValue({
       from: vi.fn((_table: string) => ({
-        where: vi.fn((_condition: any) => ({
-          limit: vi.fn().mockResolvedValue(
-            user ? [{ id: "sess-1", userId: user.id, tokenHash: "hash", expiresAt: new Date(Date.now() + 3600000), revokedAt: null }] : []
-          ),
+        where: vi.fn((_condition: unknown) => ({
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              user
+                ? [
+                    {
+                      id: "sess-1",
+                      userId: user.id,
+                      tokenHash: "hash",
+                      expiresAt: new Date(Date.now() + 3600000),
+                      revokedAt: null,
+                    },
+                  ]
+                : [],
+            ),
         })),
       })),
     }),

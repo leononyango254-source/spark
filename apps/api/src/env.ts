@@ -13,6 +13,8 @@ export const envSchema = z.object({
   MEMBERSHIP_CACHE_TTL_MS: z.coerce.number().int().positive().default(300_000),
   WALLETCONNECT_PROJECT_ID: z.string().optional(),
   WALLETCONNECT_RELAY_URL: z.string().optional(),
+  SETTLEMENT_PROJECT_ID: z.string().optional().default(""),
+  SETTLEMENT_RELAY_URL: z.string().optional().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -2,29 +2,36 @@ import type { Db } from "@spark/db";
 import type { FastifyInstance } from "fastify";
 import type { WalletConnectSessionManager } from "@spark/wallet";
 import { extractToken, resolveSession } from "../auth/resolveSession";
-import type { ApiDeps } from "../server";
+import type { ApiDeps, SettlementService } from "../server";
 
 export interface SettlementRouteDeps {
   db: Db;
   walletConnect: WalletConnectSessionManager;
-  settlement: any;
+  settlement: SettlementService;
 }
 
-export function registerSettlementRoutes(app: FastifyInstance, deps: ApiDeps & SettlementRouteDeps): void {
+export function registerSettlementRoutes(
+  app: FastifyInstance,
+  deps: ApiDeps & SettlementRouteDeps,
+): void {
   app.post("/api/settlement/submit", async (request, reply) => {
     const token = extractToken(request.headers);
     if (!token) return reply.code(401).send({ error: "unauthenticated" });
     const user = await resolveSession(deps.db, token);
     if (!user) return reply.code(401).send({ error: "unauthenticated" });
 
-    const { address, amount, chainId } = request.body as { address: string; amount: string; chainId: number };
+    const { address, amount, chainId } = request.body as {
+      address: string;
+      amount: string;
+      chainId: number;
+    };
     if (!address || !amount || !chainId) return reply.code(400).send({ error: "invalid_body" });
 
     const result = await deps.settlement.submitSettlement(
-      address,
+      address as `0x${string}`,
       BigInt(amount),
       chainId,
-      deps.walletConnect
+      deps.walletConnect,
     );
     return reply.send({ status: "submitted", txHash: result.hash });
   });
@@ -38,7 +45,11 @@ export function registerSettlementRoutes(app: FastifyInstance, deps: ApiDeps & S
       if (!user) return reply.code(401).send({ error: "unauthenticated" });
 
       const { txHash } = request.params;
-      const status = await deps.settlement.getSettlementStatus(txHash);
-      return reply.send({ status: status.status, ...(status.receipt && { receipt: status.receipt }) });
-    });
+      const status = await deps.settlement.getSettlementStatus(txHash as `0x${string}`);
+      if (status.receipt === undefined) {
+        return reply.send({ status: status.status });
+      }
+      return reply.send({ status: status.status, receipt: status.receipt });
+    },
+  );
 }

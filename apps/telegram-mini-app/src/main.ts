@@ -2,6 +2,7 @@ import { init as initSDK, retrieveLaunchParams } from "@telegram-apps/sdk";
 import { type AuthResponse, authenticate, type VerifyResponse, verify as verifyApi } from "./api";
 import { parseStartParam } from "./launch";
 import { walletConnectInit, walletPollStatus, walletDisconnect } from "./wallet";
+import { settlement } from "./settlement";
 
 const apiOrigin = import.meta.env.VITE_API_ORIGIN;
 if (!apiOrigin) throw new Error("VITE_API_ORIGIN not set");
@@ -65,7 +66,9 @@ function render(): void {
 
     const walletStatus = document.getElementById("wallet-status") as HTMLDivElement | null;
     const connectBtn = document.getElementById("connect-wallet-btn") as HTMLButtonElement | null;
-    const disconnectBtn = document.getElementById("disconnect-wallet-btn") as HTMLButtonElement | null;
+    const disconnectBtn = document.getElementById(
+      "disconnect-wallet-btn",
+    ) as HTMLButtonElement | null;
 
     if (connectBtn) {
       connectBtn.addEventListener("click", async () => {

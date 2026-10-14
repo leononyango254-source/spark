@@ -8,19 +8,19 @@ import type { TelegramBotApi } from "@spark/telegram";
 import type { WalletConnectSessionManager } from "@spark/wallet";
 import Fastify, { type FastifyInstance } from "fastify";
 
-type SettlementService = {
+export type SettlementService = {
   getUserBalance: (userAddress: `0x${string}`, _chainId: number) => Promise<bigint>;
   submitSettlement: (
     userAddress: `0x${string}`,
     amount: bigint,
     _chainId: number,
-    walletConnectMgr: any,
+    walletConnectMgr: WalletConnectSessionManager,
   ) => Promise<{ hash: `0x${string}`; awaitReceipt: () => Promise<void> }>;
   getSettlementStatus: (
     txHash: `0x${string}`,
     intervalMs?: number,
     timeoutMs?: number,
-  ) => Promise<{ status: string; receipt?: any }>;
+  ) => Promise<{ status: "pending" | "settled"; receipt?: unknown }>;
 };
 import type { MembershipCache } from "./cache/membershipCache";
 import { registerAuthRoutes } from "./routes/auth";

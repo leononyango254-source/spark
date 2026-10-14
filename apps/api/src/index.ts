@@ -6,7 +6,7 @@ import { type WalletConnectConfig, WalletConnectSessionManager } from "@spark/wa
 import { createMembershipCache } from "./cache/membershipCache";
 import { buildDb } from "./db";
 import { loadEnv } from "./env";
-import { buildServer } from "./server";
+import { buildServer, type SettlementService } from "./server";
 
 const env = loadEnv();
 if (!env.DATABASE_URL) {
@@ -29,6 +29,14 @@ if (env.WALLETCONNECT_PROJECT_ID) {
   } as WalletConnectConfig);
 }
 
+const settlement: SettlementService = {
+  getUserBalance: async () => 0n,
+  submitSettlement: async () => ({
+    hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+    awaitReceipt: async () => {},
+  }),
+  getSettlementStatus: async () => ({ status: "pending" }),
+};
 const deps: Parameters<typeof buildServer>[0] = {
   db,
   telegram: env.TELEGRAM_BOT_TOKEN
@@ -42,10 +50,12 @@ const deps: Parameters<typeof buildServer>[0] = {
   rewardEngine: createRewardEngine({ db }),
   botUsername: env.TELEGRAM_BOT_USERNAME ?? "sparkbot",
   appName: env.TELEGRAM_APP_NAME ?? "app",
+  settlement,
 };
 
 if (walletConnect !== undefined) {
   deps.walletConnect = walletConnect;
+  deps.settlement = settlement;
 }
 
 const app = buildServer(deps);
