@@ -26,6 +26,26 @@ describe("POST /api/admin/settle", () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it("returns 401 with a wrong-length token", async () => {
+    const app = await build(async () => ({}));
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/settle",
+      headers: { "x-admin-token": "short" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("returns 401 with an empty token", async () => {
+    const app = await build(async () => ({}));
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/settle",
+      headers: { "x-admin-token": "" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
   it("returns the cycle stats with the right token", async () => {
     const app = await build(async () => ({ submitted: 2, confirmed: 2 }));
     const res = await app.inject({
