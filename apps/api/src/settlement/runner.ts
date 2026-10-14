@@ -16,36 +16,52 @@ export interface SettlementRunner {
   runOnce: () => Promise<{ settle: unknown; reconcile: unknown }>;
 }
 
+function formatError(err: unknown): string {
+  return err instanceof Error ? (err.stack ?? err.message) : String(err);
+}
+
 export function createSettlementRunner(cfg: SettlementRunnerConfig): SettlementRunner {
   const setInt = cfg.setIntervalFn ?? setInterval;
   const clearInt = cfg.clearIntervalFn ?? clearInterval;
   const timers: Array<ReturnType<typeof setInterval>> = [];
-  let inFlight = false;
+  let busy = false;
+  let started = false;
 
-  async function guarded(kind: "settle" | "reconcile", fn: () => Promise<unknown>): Promise<void> {
-    if (inFlight) {
+  async function exclusive<T>(
+    kind: TickKind,
+    fn: () => Promise<T>,
+  ): Promise<{ ran: true; value: T } | { ran: false }> {
+    if (busy) {
       cfg.logger?.("settlement.tick_skipped", { kind });
-      return;
+      return { ran: false };
     }
-    inFlight = true;
+    busy = true;
     try {
-      await fn();
+      return { ran: true, value: await fn() };
     } catch (err) {
-      cfg.logger?.("settlement.tick_error", { kind, error: String(err) });
+      cfg.logger?.("settlement.tick_error", { kind, error: formatError(err) });
+      return { ran: false };
     } finally {
-      inFlight = false;
+      busy = false;
     }
   }
 
   return {
     async runOnce() {
-      return { settle: await cfg.settle(), reconcile: await cfg.reconcile() };
+      const result = await exclusive("settle", async () => ({
+        settle: await cfg.settle(),
+        reconcile: await cfg.reconcile(),
+      }));
+      if (result.ran) return result.value;
+      return { settle: { skipped: true }, reconcile: { skipped: true } };
     },
     start() {
-      void guarded("reconcile", cfg.reconcile);
-      const settleTimer = setInt(() => void guarded("settle", cfg.settle), cfg.settleIntervalMs);
+      if (started) return;
+      started = true;
+      void exclusive("reconcile", cfg.reconcile);
+      const settleTimer = setInt(() => void exclusive("settle", cfg.settle), cfg.settleIntervalMs);
       const reconcileTimer = setInt(
-        () => void guarded("reconcile", cfg.reconcile),
+        () => void exclusive("reconcile", cfg.reconcile),
         cfg.reconcileIntervalMs,
       );
       settleTimer.unref?.();
@@ -55,6 +71,7 @@ export function createSettlementRunner(cfg: SettlementRunnerConfig): SettlementR
     stop() {
       for (const timer of timers) clearInt(timer);
       timers.length = 0;
+      started = false;
     },
   };
 }
