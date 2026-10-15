@@ -63,28 +63,46 @@ if (settlementConfig.status === "misconfigured") {
   );
 }
 if (settlementConfig.status === "ready") {
-  const { deps: runtime, intervals } = buildRuntime(settlementConfig.config.workerEnv, db);
-  const runner = createSettlementRunner({
-    settle: () =>
-      runSettlementCycle({
-        db,
-        settlement: runtime.settlement,
-        limit: runtime.batchLimit,
-        maxAttempts: runtime.maxAttempts,
-      }),
-    reconcile: () =>
-      runReconciliation({
-        db,
-        publicClient: runtime.publicClient,
-        escrowAddress: runtime.escrowAddress,
-        chainId: runtime.chainId,
-      }),
-    settleIntervalMs: intervals.settleSeconds * 1000,
-    reconcileIntervalMs: intervals.reconcileSeconds * 1000,
-    logger: (event, meta) => console.warn(`settlement: ${event}`, meta ?? {}),
-  });
-  runner.start();
-  deps.admin = { runner, adminToken: settlementConfig.config.adminToken };
+  try {
+    const { deps: runtime, intervals } = buildRuntime(settlementConfig.config.workerEnv, db);
+    const runner = createSettlementRunner({
+      settle: async () => {
+        const stats = await runSettlementCycle({
+          db,
+          settlement: runtime.settlement,
+          limit: runtime.batchLimit,
+          maxAttempts: runtime.maxAttempts,
+        });
+        if (stats.retrying > 0 || stats.failed > 0) {
+          console.warn(
+            `settlement: cycle retrying=${stats.retrying} failed=${stats.failed} held=${stats.held}`,
+          );
+        }
+        return stats;
+      },
+      reconcile: () =>
+        runReconciliation({
+          db,
+          publicClient: runtime.publicClient,
+          escrowAddress: runtime.escrowAddress,
+          chainId: runtime.chainId,
+        }),
+      settleIntervalMs: intervals.settleSeconds * 1000,
+      reconcileIntervalMs: intervals.reconcileSeconds * 1000,
+      logger: (event, meta) => console.warn(`settlement: ${event}`, meta ?? {}),
+    });
+    runner.start();
+    deps.admin = { runner, adminToken: settlementConfig.config.adminToken };
+    console.warn(
+      `settlement: runner started (settle every ${intervals.settleSeconds}s, reconcile every ${intervals.reconcileSeconds}s)`,
+    );
+  } catch (err) {
+    console.error(
+      `settlement: failed to start runner, continuing without settlement: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
 }
 
 if (walletConnect !== undefined) {
