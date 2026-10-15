@@ -35,7 +35,7 @@ The initial implementation is intentionally narrower than the long-term vision. 
 - Completion rewards and optional one-level referral rewards.
 - USDC-denominated campaign accounting and Arc settlement architecture.
 
-**Project status matters:** not every item above is live or production-ready. The repository is currently in **Phase 1 — Foundation** following completion of the Phase 0 integration spikes. Some end-to-end campaign and payout flows are still being implemented. Do not treat this repository as a live campaign service or send real funds based on the roadmap alone.
+**Project status matters:** not every item above is live or production-ready. The repository is currently in **Phase 1 — Foundation** following completion of the Phase 0 integration spikes. Some end-to-end campaign and payout flows are still being implemented. 
 
 ## Architecture at a glance
 
