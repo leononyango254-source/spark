@@ -1,12 +1,12 @@
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { isAddress } from "viem";
 import {
   createDb,
   type Db,
   findOrCreateUserByTelegramId,
   upsertWalletAssociation,
 } from "@spark/db";
+import { isAddress } from "viem";
 import { loadWorkerEnv } from "../env";
 
 export async function associateWallet(

@@ -96,5 +96,6 @@ export async function findOrCreateUserByTelegramId(
     .from(users)
     .where(eq(users.telegramUserId, telegramUserId))
     .limit(1);
-  return row!;
+  if (!row) throw new Error("findOrCreateUserByTelegramId: user not found after insert");
+  return row;
 }
