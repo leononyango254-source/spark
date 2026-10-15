@@ -100,19 +100,54 @@ Verification depends on the action. Some tasks may be verified through platform 
 - **Abuse-aware:** design for duplicate accounts, self-referrals, referral farming, bot activity and campaign-budget exhaustion.
 - **Honest about verification:** support only the proofs that the implementation can reliably check.
 
-## What Spark is building first
+## Current implementation status
 
-The initial implementation focuses on a narrow, demonstrable workflow:
+Spark's product vision is broader than the current MVP. The repository contains several backend and contract building blocks, but the Telegram Mini App and supported action types are still limited. The sections below distinguish existing code from planned product capabilities.
 
-- Telegram-based identity validation and campaign entry.
-- Telegram channel-membership verification.
-- Campaign participation and eligibility rules.
-- Completion rewards and optional one-level referral rewards.
-- USDC-denominated accounting and an Arc escrow/settlement workflow.
+### Implemented building blocks
 
-This is the foundation for the wider product vision, not a claim that every use case described above is already available. Cross-platform X integrations, broader task verification, creator discovery, advanced campaign analytics and a full marketplace are potential extensions.
+- **Telegram identity:** server-side validation of Telegram Mini App `initData` and session-based API authentication.
+- **Campaign domain:** PostgreSQL campaign records, campaign lifecycle states, budget and reward fields, participant limits, and campaign lifecycle logic/API endpoints.
+- **Task persistence:** campaigns can have task records with typed task kinds and task-specific configuration. The currently defined task type is **Telegram channel membership**.
+- **Membership verification:** a Telegram-based participation and channel-membership verification path.
+- **Referrals:** campaign-specific referral codes and Telegram deep links, with referral attribution and qualification logic.
+- **Reward lifecycle:** reward and participation state models, database records and worker logic for payout submission, retry handling and chain reconciliation.
+- **Escrow contract:** a Foundry project for campaign funding and reward payouts, with unit, fuzz and invariant tests.
 
-**Implementation status:** the repository contains the application, domain packages, background settlement/reconciliation code and a Foundry escrow contract. Feature completeness and deployment status should be assessed from the actual implementation and test evidence; planned product capabilities should not be assumed to be live.
+These are code-level capabilities, not a claim that every flow has been validated in a production deployment.
+
+### Current Mini App limitations
+
+The participant interface is still a prototype focused on verifying Telegram channel membership. It does **not yet** provide the complete campaign experience described in the vision above.
+
+Not yet implemented as a complete end-to-end product:
+
+- A participant-facing campaign directory and multi-task campaign detail page.
+- A creator-facing campaign builder for adding multiple action types and configuring each action's verification criteria.
+- Social-post URL submission and creator review workflows.
+- A complete referral progress view and participant rewards dashboard.
+- A production-ready, end-to-end wallet and payout experience in the Mini App.
+
+The current task model is extensible in principle, but the application does not yet support arbitrary task types. Do not assume that X posts, follows, website visits, surveys or custom submissions can already be created and verified.
+
+### Prototype and production caveats
+
+Some wallet and payout controls in the Mini App are prototype code and must not be treated as proof of a real wallet connection or confirmed reward payment. The UI and settlement API need to be connected to the campaign reward authorization and settlement pipeline before being used for real-value payouts.
+
+Campaign creation, ownership checks, funding confirmation, reward authorization and on-chain reconciliation also require end-to-end verification and security hardening before production use. A database status update or submitted transaction is not proof of confirmed on-chain funding or payment.
+
+### Product direction
+
+The next product milestone is a minimal Telegram-first campaign workflow:
+
+1. Let a creator configure a campaign and its supported actions.
+2. Let participants discover a campaign and see its requirements and rewards.
+3. Support task-specific completion and verification, starting with Telegram membership and then referral and evidence-based tasks.
+4. Track task approval separately from reward authorization and settlement.
+5. Show pending, failed and paid reward states accurately.
+6. Expand to additional platforms only when the corresponding verification and attribution methods are reliable.
+
+The longer-term vision remains cross-platform: campaigns should eventually support actions and distribution across X and other communities without making Telegram-specific assumptions part of the core campaign model.
 
 ## Architecture at a glance
 
@@ -138,7 +173,10 @@ packages/
   telegram/            Telegram initData validation and membership rules
   wallet/              WalletProvider interface
   arc/                 Arc chain constants and configuration
+  reward/              Reward authorization and settlement lifecycle
   rewards/             Reward and participation state machines
+  referral/            Referral codes, attribution and qualification
+  campaign/            Campaign lifecycle and configuration logic
   ledger/              Append-only ledger types
   db/                  Drizzle schema and migrations
 worker/                Background jobs (settlement, reconciliation)
