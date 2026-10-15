@@ -1,10 +1,10 @@
 import {
+  type Address,
   createPublicClient,
   decodeEventLog,
   encodeFunctionData,
-  http,
-  type Address,
   type Hex,
+  http,
   type PublicClient,
 } from "viem";
 import { campaignEscrowAbi, usdcErc20Abi } from "./abi";
@@ -87,21 +87,28 @@ export function decodeRewardPaidLog(log: RawLog): RewardPaidEvent | null {
   };
 }
 
+/** Some Arc RPC providers cap `eth_getLogs` to a 10,000-block range. */
+export const ARC_MAX_LOG_RANGE = 10_000n;
+
 export async function getRewardPaidLogs(
   publicClient: PublicClient,
   escrowAddress: Address,
   fromBlock: bigint,
   toBlock: bigint,
 ): Promise<RewardPaidEvent[]> {
-  const logs = await publicClient.getLogs({
-    address: escrowAddress,
-    fromBlock,
-    toBlock,
-  });
   const events: RewardPaidEvent[] = [];
-  for (const log of logs) {
-    const event = decodeRewardPaidLog(log as unknown as RawLog);
-    if (event) events.push(event);
+  for (let start = fromBlock; start <= toBlock; start += ARC_MAX_LOG_RANGE) {
+    const windowEnd = start + ARC_MAX_LOG_RANGE - 1n;
+    const chunkTo = windowEnd < toBlock ? windowEnd : toBlock;
+    const logs = await publicClient.getLogs({
+      address: escrowAddress,
+      fromBlock: start,
+      toBlock: chunkTo,
+    });
+    for (const log of logs) {
+      const event = decodeRewardPaidLog(log as unknown as RawLog);
+      if (event) events.push(event);
+    }
   }
   return events;
 }

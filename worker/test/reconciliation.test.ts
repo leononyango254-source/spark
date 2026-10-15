@@ -2,16 +2,17 @@ import {
   countPaidRewardsWithoutEvent,
   createCampaign,
   createReward,
+  type Db,
   findRewardById,
   getCursor,
-  type Db,
   nextRewardRef,
   setCampaignOnChainId,
+  setCursor,
   upsertUserByTelegramId,
 } from "@spark/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { type Harness, startHarness } from "../../packages/db/test/harness";
-import { runReconciliation } from "../src/reconciliation";
+import { type ReconcileDeps, runReconciliation } from "../src/reconciliation";
 
 const ESCROW = "0x00000000000000000000000000000000000000E5" as const;
 const CHAIN = 5042002;
@@ -125,5 +126,54 @@ describe("reward reconciliation", () => {
       fetchLogs: async () => [],
     });
     expect(stats.diverged).toBeGreaterThanOrEqual(1);
+  });
+
+  it("scans only a bounded lookback window on the first run instead of genesis", async () => {
+    const escrow = "0x00000000000000000000000000000000000000C1" as const;
+    const calls: Array<[bigint, bigint]> = [];
+    const stats = await runReconciliation({
+      db,
+      chainId: CHAIN,
+      escrowAddress: escrow,
+      publicClient: { getBlockNumber: vi.fn(async () => 1_000_000n) },
+      lookbackBlocks: 500n,
+      maxScanBlocks: 10_000n,
+      fetchLogs: async (_escrow, from, to) => {
+        calls.push([from, to]);
+        return [];
+      },
+    });
+    expect(calls).toEqual([[999_500n, 1_000_000n]]);
+    expect(await getCursor(db, CHAIN, escrow)).toBe(1_000_001n);
+    expect(stats.scanned).toBe(0);
+  });
+
+  it("caps blocks scanned per run and advances the cursor without gaps", async () => {
+    const escrow = "0x00000000000000000000000000000000000000C2" as const;
+    await setCursor(db, CHAIN, escrow, 1_000n);
+    const calls: Array<[bigint, bigint]> = [];
+    const deps: ReconcileDeps = {
+      db,
+      chainId: CHAIN,
+      escrowAddress: escrow,
+      publicClient: { getBlockNumber: vi.fn(async () => 100_000n) },
+      maxScanBlocks: 40_000n,
+      fetchLogs: async (_e, from, to) => {
+        calls.push([from, to]);
+        return [];
+      },
+    };
+
+    await runReconciliation(deps);
+    expect(calls.at(-1)).toEqual([1_000n, 40_999n]);
+    expect(await getCursor(db, CHAIN, escrow)).toBe(41_000n);
+
+    await runReconciliation(deps);
+    expect(calls.at(-1)).toEqual([41_000n, 80_999n]);
+    expect(await getCursor(db, CHAIN, escrow)).toBe(81_000n);
+
+    await runReconciliation(deps);
+    expect(calls.at(-1)).toEqual([81_000n, 100_000n]);
+    expect(await getCursor(db, CHAIN, escrow)).toBe(100_001n);
   });
 });
