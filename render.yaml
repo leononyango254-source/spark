@@ -32,3 +32,21 @@ services:
         sync: false
       - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
+      - key: SETTLEMENT_ENABLED
+        value: "true"
+      - key: SETTLE_INTERVAL_SECONDS
+        value: "15"
+      - key: RECONCILE_INTERVAL_SECONDS
+        value: "30"
+      - key: ARC_RPC_URL
+        value: https://rpc.testnet.arc.io
+      - key: ARC_CHAIN_ID
+        value: "5042002"
+      - key: ARC_USDC_ADDRESS
+        value: "0x3600000000000000000000000000000000000000"
+      - key: ESCROW_ADDRESS
+        value: "0x9539efAFf246799827E6F5E6Cbc475122710Ef64"
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: OPERATOR_PRIVATE_KEY
+        sync: false

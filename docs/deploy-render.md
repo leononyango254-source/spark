@@ -108,4 +108,38 @@ psql "$DATABASE_URL_UNPOOLED" < backup.sql
 - **Settlement / Arc / real USDC** is disabled; the API registers a mock
   `SettlementService` only when `WALLETCONNECT_PROJECT_ID` is set.
 - **Membership verification** needs a configured Telegram channel and bot admin rights.
-- **Worker** (reward reconciliation) is not deployed on the free plan.
+- **Worker** (reward reconciliation) is not deployed as a separate service on the free
+  plan; instead the API runs the settlement cycle in-process when `SETTLEMENT_ENABLED=true`
+  (see §10).
+
+## 10. On-chain settlement (operator EOA)
+
+The API runs the settlement + reconciliation cycle in-process when `SETTLEMENT_ENABLED=true`
+(no separate Render worker). On boot it reconciles, then settles on an interval. A manual
+trigger is exposed at `POST /api/admin/settle` (guarded by `x-admin-token`).
+
+Prerequisites:
+
+- Operator `0xfB4d…` funded with test USDC at `0x3600…0000` on Arc testnet.
+- A campaign with `on_chain_campaign_id` set (via the seed script) and a
+  `wallet_association` for the payout recipient.
+
+Set on the Render service `srv-db7a4gu01pc73duj120`: `SETTLEMENT_ENABLED=true`,
+`ADMIN_TOKEN`, `ARC_RPC_URL`, `ARC_CHAIN_ID`, `ARC_USDC_ADDRESS`, `ESCROW_ADDRESS`,
+`OPERATOR_PRIVATE_KEY` (secret), `SETTLE_INTERVAL_SECONDS`, `RECONCILE_INTERVAL_SECONDS`.
+
+Seed and associate (run locally against the prod `DATABASE_URL`):
+
+```
+pnpm --filter @spark/worker seed:campaign <campaign-uuid> 1000000
+pnpm --filter @spark/worker associate:wallet <campaign-uuid> <telegram-user-id> 0x<recipient>
+```
+
+Trigger and verify:
+
+```
+curl -X POST https://spark-api-ksgo.onrender.com/api/admin/settle -H "x-admin-token: $ADMIN_TOKEN"
+```
+
+Expect a reward to move `AUTHORIZED → SUBMITTED → CONFIRMED → PAID` and a `RewardPaid`
+log on Arc testnet. A second identical call while a cycle is running is a no-op.
