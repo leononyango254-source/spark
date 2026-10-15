@@ -100,65 +100,6 @@ Verification depends on the action. Some tasks may be verified through platform 
 - **Abuse-aware:** design for duplicate accounts, self-referrals, referral farming, bot activity and campaign-budget exhaustion.
 - **Honest about verification:** support only the proofs that the implementation can reliably check.
 
-## Current implementation status
-
-The current Telegram multi-action campaign implementation adds a campaign builder and participant task flows while keeping campaign actions and evidence off-chain. This section describes the reported implementation state; validate the end-to-end flows and deployment configuration before using real funds.
-
-### Implemented
-
-- **Campaign creation:** creators can create draft campaigns through the Telegram Mini App. The API routes requests through `CampaignEngine` and persists a campaign with multiple typed actions.
-- **Action types:** `TELEGRAM_JOIN`, `SOCIAL_POST` and `REFERRAL`.
-- **Per-action configuration:** title, instructions, platform, verification method, reward amount, completion cap, active state and display order.
-- **Participant workflows:** browse campaigns, view campaign details, start or check Telegram actions, submit social-post evidence, view task status and view rewards.
-- **Telegram membership verification:** membership is checked server-side using the configured Telegram integration.
-- **Social-post review:** post evidence remains pending until a creator reviews it; submissions are not automatically treated as verified.
-- **Referral links and attribution:** participants can fetch campaign referral links. Referral rewards are assigned by the server to the referrer, not the referred participant.
-- **Creator and participant navigation:** the Mini App includes Explore, My tasks, Rewards, Account and Creator sections.
-- **Task review data:** action participation records support evidence, review status, reviewer identity and rejection reasons.
-- **Campaign participant caps:** a participant reservation record ensures a participant consumes the campaign-level participant cap once, even when completing multiple actions.
-- **Reward authorization:** approved actions use the existing budget/cap reservation flow. Failed reservations release temporary action-cap and participant reservations.
-- **Settlement lifecycle:** the worker submits payouts; the reward is marked paid only after reconciliation processes the on-chain `RewardPaid` event.
-- **Funding controls:** funding remains operator-confirmed. The seed script sends escrow transactions and records funding after transaction receipts; the API cannot mark a campaign funded merely because a client requests it.
-- **Database migration:** migration `0007_multi_action_campaigns.sql` adds the multi-action campaign structures.
-
-### Verification status
-
-The reported checks for this implementation are:
-
-- `pnpm typecheck` — passed.
-- `pnpm build` and the Mini App build — passed.
-- `git diff --check` — passed.
-- `pnpm lint` — failed due to existing repository-wide lint debt, with additional UI style warnings.
-- Database-backed tests — blocked by the local test-container hostname/DNS issue (`ENOTFOUND localhost`); these tests have not been verified as passing.
-- Foundry tests — blocked because `contracts/lib/forge-std` is missing. Install it with `forge install foundry-rs/forge-std --no-commit`, then rerun the contract suite.
-
-These results were reported by the implementation workflow and have not been independently rerun as part of this README update.
-
-### Known gaps and production caveats
-
-- **Creator review UI:** the secured review API exists, but the Mini App does not yet expose the full approve/reject console for social evidence.
-- **Funding UX:** funding is intentionally operator-confirmed; a complete creator self-service on-chain funding flow is not yet available.
-- **Database-backed integration tests:** action and reward integration behavior still needs to be verified against a working test database.
-- **Contract validation and deployment:** the current source contract's hardening must be deployed separately if the live escrow predates that version. Updating source code does not change an already deployed contract.
-- **Real wallet and settlement configuration:** configure and verify the actual WalletConnect, worker and chain credentials before presenting wallet or payout flows as production-ready.
-- **Migration:** apply `0007_multi_action_campaigns.sql` through a direct database connection before running the updated application against that database.
-
-A submitted task is not automatically approved, an approved task is not automatically paid, and a submitted transaction is not proof of confirmed settlement.
-
-### Smart-contract boundary
-
-No Solidity changes were required for the multi-action campaign phase. Action definitions, participant evidence and creator reviews remain off-chain. The existing escrow is used for common reward settlement rather than deploying a separate contract for every action type. The escrow must still enforce the necessary funding and payout invariants, and the deployed version must be checked before real funds are used.
-
-### Next steps
-
-1. Apply the database migration and run the database-backed action/reward integration suite.
-2. Restore `forge-std` and run the Foundry test suite.
-3. Add creator-facing approve/reject controls for social-post evidence.
-4. Verify the deployed escrow address and version against the hardened source contract.
-5. Configure and test Telegram membership permissions, WalletConnect and worker settlement credentials.
-6. Complete an end-to-end test on the intended Arc network before enabling real-value payouts.
-
-The product remains cross-platform by design, but only the action types with implemented verification or review paths should be presented as supported. X and other platforms require their own reliable verification and attribution integrations before they can be advertised as automated actions.
 
 ## Architecture at a glance
 
@@ -234,8 +175,7 @@ cd contracts && forge test
 
 ## Roadmap
 
-1. **Prove the core loop:** campaign creation, task verification, reward authorization and reliable USDC settlement.
-2. **Strengthen referrals and measurement:** attribution, duplicate prevention, conversion reporting and cost per verified action.
+1. **Strengthen referrals and measurement:** attribution, duplicate prevention, conversion reporting and cost per verified action.
 3. **Expand campaign formats:** quests, surveys, content submissions, bounties and giveaways with suitable verification.
 4. **Add distribution integrations:** support X and other channels where their verification and attribution requirements can be met.
 5. **Build creator and campaign discovery:** help campaign owners find distribution partners and help creators find relevant offers.
