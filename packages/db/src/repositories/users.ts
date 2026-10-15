@@ -74,3 +74,27 @@ export async function clearUserWallet(db: Db, userId: string): Promise<UserRow> 
   if (!row) throw new Error("clearUserWallet: no row returned");
   return row;
 }
+
+export async function findOrCreateUserByTelegramId(
+  db: Db,
+  telegramUserId: bigint,
+): Promise<UserRow> {
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.telegramUserId, telegramUserId))
+    .limit(1);
+  if (existing[0]) return existing[0];
+  const [created] = await db
+    .insert(users)
+    .values({ telegramUserId })
+    .onConflictDoNothing({ target: users.telegramUserId })
+    .returning();
+  if (created) return created;
+  const [row] = await db
+    .select()
+    .from(users)
+    .where(eq(users.telegramUserId, telegramUserId))
+    .limit(1);
+  return row!;
+}

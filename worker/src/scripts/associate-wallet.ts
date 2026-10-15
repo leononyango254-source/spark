@@ -1,17 +1,28 @@
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { createDb, type Db, upsertUserByTelegramId, upsertWalletAssociation } from "@spark/db";
+import { isAddress } from "viem";
+import {
+  createDb,
+  type Db,
+  findOrCreateUserByTelegramId,
+  upsertWalletAssociation,
+} from "@spark/db";
 import { loadWorkerEnv } from "../env";
 
 export async function associateWallet(
   db: Db,
   input: { campaignId: string; telegramUserId: bigint; address: string },
 ): Promise<void> {
-  const user = await upsertUserByTelegramId(db, { telegramUserId: input.telegramUserId });
+  const address = input.address;
+  if (!isAddress(address, { strict: false })) {
+    throw new Error("invalid address");
+  }
+  const user = await findOrCreateUserByTelegramId(db, input.telegramUserId);
   await upsertWalletAssociation(db, {
     campaignId: input.campaignId,
     userId: user.id,
-    address: input.address,
-    normalizedAddress: input.address.toLowerCase(),
+    address: address,
+    normalizedAddress: address.toLowerCase(),
   });
 }
 
@@ -36,10 +47,17 @@ async function main(): Promise<void> {
   }
 }
 
-const isEntrypoint =
-  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+function isEntrypoint(): boolean {
+  const arg = process.argv[1];
+  if (!arg) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(arg)).href;
+  } catch {
+    return false;
+  }
+}
 
-if (isEntrypoint) {
+if (isEntrypoint()) {
   main().catch((err: unknown) => {
     console.error(err);
     process.exit(1);
